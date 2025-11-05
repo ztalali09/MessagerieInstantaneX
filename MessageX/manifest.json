@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "MessageX Extension",
+  "version": "1.0",
+  "description": "A browser extension for MessageX chat",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}

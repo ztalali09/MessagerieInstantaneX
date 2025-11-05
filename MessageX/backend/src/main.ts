@@ -5,6 +5,7 @@ import { createServer } from 'http'; // <-- Import Node's http server
 import { initializeSocketIO } from './socket'; // <-- Import your socket initializer
 import { initializeDatabase, closeDatabase } from './database';
 import usersRouter from './routes/users';
+import groupsRouter from './routes/groups';
 import { seed } from './seed';
 
 const host = process.env.HOST ?? 'localhost';
@@ -41,12 +42,16 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       users: '/users',
+      groups: '/groups', // Added this for clarity
     },
   });
 });
 
 // User routes
 app.use('/users', usersRouter);
+
+// Group routes
+app.use('/groups', groupsRouter); // <-- This was in the duplicates
 
 // Health check endpoint
 app.get('/health', (req, res) => {

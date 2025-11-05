@@ -12,6 +12,12 @@
           <div class="user-avatar">{{ user.username.charAt(0).toUpperCase() }}</div>
           <div class="user-info">
             <h4>{{ user.username }}</h4>
+            <div class="user-status">
+              <span
+                class="status-indicator"
+                :class="{ online: onlineUsers.includes(user.id.toString()) }"
+              ></span>
+            </div>
           </div>
         </div>
       </div>
@@ -24,13 +30,22 @@
       <div class="messages">
         <div
           v-for="msg in conversationMessages"
-          :key="msg.timestamp + msg.message"
-          :class="['message', msg.from === currentUserId ? 'sent' : 'received']"
+          :key="msg.id || (msg.timestamp + msg.message)"
+          :class="['message', msg.from_user_id == currentUserId ? 'sent' : 'received']"
         >
           <span class="msg-content">
             {{ msg.message }}
           </span>
           <span class="msg-time">{{ formatTimestamp(msg.timestamp) }}</span>
+        </div>
+        <!-- Typing indicator -->
+        <div v-if="isUserTyping" class="typing-indicator">
+          <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <span class="typing-text">{{ selectedUser?.username }} is typing...</span>
         </div>
       </div>
       <form class="chat-input" @submit.prevent="handleSendMessage">
@@ -39,6 +54,7 @@
           type="text"
           placeholder="Type a message..."
           autocomplete="off"
+          @input="handleInput"
         />
         <button type="submit">Send</button>
       </form>
@@ -47,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { apiService, type User } from '../services/api';
 import { useSocket } from '../services/useSocket';
 import { useUserStore } from '../stores/userStore';
@@ -58,17 +74,32 @@ const loading = ref(false);
 const selectedUser = ref<User | null>(null);
 const messageText = ref('');
 const currentUserId = userStore.currentUser?.id.toString() || '';
+const typingTimeout = ref(null);
 
-const { messages, sendMessage } = useSocket();
+const { messages, onlineUsers, typingUsers, sendMessage, startTyping, stopTyping } = useSocket();
 
 const conversationMessages = computed(() => {
   if (!selectedUser.value) return [];
-  return messages.value.filter(
+  const filtered = messages.value.filter(
     m =>
-      (m.from === currentUserId && m.to === selectedUser.value?.id) ||
-      (m.to === currentUserId && m.from === selectedUser.value?.id)
+      (m.from_user_id == currentUserId && m.to_user_id == selectedUser.value?.id) ||
+      (m.to_user_id == currentUserId && m.from_user_id == selectedUser.value?.id)
   );
+  return filtered.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 });
+
+const isUserTyping = computed(() => {
+  return selectedUser.value && typingUsers.value.includes(selectedUser.value.id.toString());
+});
+
+// Auto-scroll to bottom when new messages arrive
+watch(conversationMessages, async () => {
+  await nextTick();
+  const messagesContainer = document.querySelector('.messages');
+  if (messagesContainer) {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+}, { deep: true });
 
 const loadUsers = async () => {
   loading.value = true;
@@ -93,8 +124,33 @@ function selectUser(user: User) {
 function handleSendMessage() {
   if (!messageText.value.trim() || !selectedUser.value) return;
   console.log('💬 Sending message to user:', selectedUser.value.username, 'Message:', messageText.value);
-  sendMessage(selectedUser.value.id, messageText.value, currentUserId);
+  sendMessage(selectedUser.value.id, messageText.value);
   messageText.value = '';
+
+  // Stop typing indicator
+  if (typingTimeout.value) {
+    clearTimeout(typingTimeout.value);
+    typingTimeout.value = null;
+  }
+  stopTyping(selectedUser.value.id);
+}
+
+function handleInput() {
+  if (!selectedUser.value) return;
+
+  // Start typing indicator
+  startTyping(selectedUser.value.id);
+
+  // Clear existing timeout
+  if (typingTimeout.value) {
+    clearTimeout(typingTimeout.value);
+  }
+
+  // Set timeout to stop typing indicator after 1 second of no input
+  typingTimeout.value = setTimeout(() => {
+    stopTyping(selectedUser.value.id);
+    typingTimeout.value = null;
+  }, 1000);
 }
 
 function formatTimestamp(ts: string) {
@@ -112,29 +168,36 @@ onMounted(loadUsers);
 .chat-container {
   display: flex;
   height: 100vh;
+  flex-direction: column;
 }
 
 .sidebar {
-  width: 25%;
+  width: 100%;
   background-color: #f0f0f0;
-  border-right: 1px solid #ccc;
+  border-bottom: 1px solid #ccc;
   overflow-y: auto;
+  max-height: 30vh;
 }
 
 .user-list {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: flex;
+  overflow-x: auto;
 }
 
 .user-item {
-  padding: 15px;
+  padding: 10px;
   cursor: pointer;
-  border-bottom: 1px solid #ccc;
+  border-right: 1px solid #ccc;
   display: flex;
+  flex-direction: column;
   align-items: center;
   background-color: transparent;
   transition: background 0.2s;
+  min-width: 80px;
+  flex-shrink: 0;
 }
 
 .user-item.selected,
@@ -153,19 +216,81 @@ onMounted(loadUsers);
   justify-content: center;
   font-weight: bold;
   font-size: 1.2rem;
-  margin-right: 1rem;
+  margin-bottom: 5px;
 }
 
 .user-info h4 {
-  margin: 0 0 0.25rem 0;
+  margin: 0;
   color: #333;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.user-status {
+  display: flex;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #666; /* offline - black/gray */
+  border: 1px solid #ccc;
+}
+
+.status-indicator.online {
+  background-color: #28a745; /* online - green */
 }
 
 .chat-area {
-  width: 75%;
+  flex: 1;
   display: flex;
   flex-direction: column;
   background: #fafbfc;
+}
+
+/* Desktop styles */
+@media (min-width: 768px) {
+  .chat-container {
+    flex-direction: row;
+  }
+
+  .sidebar {
+    width: 25%;
+    border-bottom: none;
+    border-right: 1px solid #ccc;
+    max-height: none;
+  }
+
+  .user-list {
+    flex-direction: column;
+    overflow-x: visible;
+    overflow-y: auto;
+  }
+
+  .user-item {
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid #ccc;
+    min-width: auto;
+    padding: 15px;
+  }
+
+  .user-avatar {
+    margin-bottom: 0;
+    margin-right: 1rem;
+  }
+
+  .user-info h4 {
+    font-size: 1rem;
+    text-align: left;
+  }
+
+  .user-status {
+    justify-content: flex-start;
+  }
 }
 
 .chat-header {
@@ -252,5 +377,53 @@ onMounted(loadUsers);
 
 .chat-input button:hover {
   background-color: #0056b3;
+}
+
+/* Typing indicator styles */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  align-self: flex-start;
+}
+
+.typing-dots {
+  display: flex;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+.typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #666;
+  animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+.typing-text {
+  font-size: 0.8rem;
+  color: #666;
+  font-style: italic;
+}
+
+@keyframes typing {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 </style>
