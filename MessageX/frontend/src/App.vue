@@ -1,11 +1,21 @@
 <template>
   <div id="app">
+    <Navbar v-if="isAuthenticated" />
     <router-view />
   </div>
 </template>
 
 <script setup lang="ts">
-// App component - main container for the application
+import { onMounted, computed } from 'vue';
+import { useUserStore } from './stores/userStore';
+import Navbar from './components/Navbar.vue';
+
+const userStore = useUserStore();
+const isAuthenticated = computed(() => userStore.isAuthenticated);
+
+onMounted(() => {
+  userStore.initializeAuth();
+});
 </script>
 
 <style>

@@ -49,11 +49,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { apiService, type LoginData } from '../services/api';
+import { useUserStore } from '../stores/userStore';
 
 const router = useRouter();
+const userStore = useUserStore();
 
-const form = ref<LoginData>({
+const form = ref({
   username: '',
   password: '',
 });
@@ -68,11 +69,10 @@ const handleLogin = async () => {
   success.value = '';
 
   try {
-    const user = await apiService.login(form.value);
+    const user = await userStore.login(form.value.username, form.value.password);
     success.value = `Welcome back, ${user.username}!`;
-    // In a real app, you'd store the user session/token here
     setTimeout(() => {
-      router.push('/dashboard');
+      router.push('/chat');
     }, 1500);
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Login failed';

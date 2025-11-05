@@ -5,9 +5,14 @@
   "scripts": {},
   "private": true,
   "dependencies": {
+    "@types/socket.io": "^3.0.1",
     "@types/sqlite3": "^3.1.11",
     "@vue/tsconfig": "^0.8.1",
+    "cors": "^2.8.5",
     "express": "^4.21.2",
+    "pinia": "^3.0.4",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "sqlite3": "^5.1.7",
     "vue": "^3.5.22",
     "vue-router": "^4.6.3"

@@ -64,11 +64,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { apiService, type RegisterData } from '../services/api';
+import { useUserStore } from '../stores/userStore';
 
 const router = useRouter();
+const userStore = useUserStore();
 
-const form = ref<RegisterData>({
+const form = ref({
   username: '',
   password: '',
 });
@@ -92,14 +93,14 @@ const handleRegister = async () => {
   success.value = '';
 
   try {
-    const result = await apiService.register(form.value);
+    const result = await userStore.register(form.value.username, form.value.password);
     success.value = result.message || 'Account created successfully!';
     // Reset form
     form.value = { username: '', password: '' };
     confirmPassword.value = '';
-    // Redirect to login after success
+    // Redirect to chat after success (since register also logs in)
     setTimeout(() => {
-      router.push('/login');
+      router.push('/chat');
     }, 2000);
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Registration failed';
