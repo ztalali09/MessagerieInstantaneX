@@ -15,8 +15,8 @@ COPY src/ ./src/
 COPY prisma/ ./prisma/
 COPY tsconfig*.json ./
 
-# Build the application
-RUN npm run build
+# Build the application using Nx
+RUN npx nx build @message-x/backend --configuration=production
 
 # Production stage
 FROM node:18-alpine AS production
