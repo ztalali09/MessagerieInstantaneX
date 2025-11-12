@@ -1,5 +1,5 @@
-# Use Node.js 18 Alpine as base image
-FROM node:18-alpine AS base
+# Build stage
+FROM node:18-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -7,17 +7,34 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install all dependencies (including dev dependencies for building)
+RUN npm ci
+
+# Copy source code
+COPY src/ ./src/
+COPY prisma/ ./prisma/
+COPY tsconfig*.json ./
+
+# Build the application
+RUN npm run build
 
 # Production stage
-FROM base AS production
+FROM node:18-alpine AS production
 
-# Copy built application from dist
-COPY dist/ ./
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm ci --only=production
+
+# Copy built application from builder stage
+COPY --from=builder /app/dist/ ./dist/
 
 # Copy Prisma schema and migrations
-COPY prisma/ ./prisma/
+COPY --from=builder /app/prisma/ ./prisma/
 
 # Generate Prisma client
 RUN npx prisma generate
@@ -26,4 +43,4 @@ RUN npx prisma generate
 EXPOSE 3000
 
 # Start the application
-CMD ["node", "main.js"]
+CMD ["node", "dist/main.js"]
