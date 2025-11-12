@@ -50,7 +50,7 @@ RUN chown -R nodejs:nodejs /app
 USER nodejs
 
 # Expose port
-EXPOSE 3000
+EXPOSE 80
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
