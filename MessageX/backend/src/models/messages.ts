@@ -66,7 +66,7 @@ export const getMessagesBetweenUsers = async (userId1: number, userId2: number):
     },
   });
 
-  return messages.map((msg) => ({
+  return messages.map((msg: any) => ({
     id: msg.id,
     from_user_id: msg.from_user_id,
     to_user_id: msg.to_user_id || 0,
@@ -128,7 +128,7 @@ export const getRecentMessagesForUser = async (userId: number, limit: number = 5
   // Reverse to get chronological order
   const reversedMessages = messages.reverse();
 
-  return reversedMessages.map((msg) => ({
+  return reversedMessages.map((msg: any) => ({
     id: msg.id,
     from_user_id: msg.from_user_id,
     to_user_id: msg.to_user_id || 0,
