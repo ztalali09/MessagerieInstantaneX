@@ -48,6 +48,8 @@ app.get('/', (req, res) => {
 // User routes
 app.use('/users', usersRouter);
 
+// Group routes - REMOVED
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
@@ -92,7 +94,7 @@ process.on('SIGTERM', () => onShutdown('SIGTERM'));
 
 // Initialize database *then* start the server
 initializeDatabase()
-  .then(async () => {
+  .then(async (prisma) => {
     console.log('Database initialized successfully.');
     // Seed the database with initial users
     await seed();

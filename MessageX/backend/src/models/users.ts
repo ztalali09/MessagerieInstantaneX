@@ -1,73 +1,62 @@
 import { getDb } from '../database';
+import { PrismaClient } from '@prisma/client';
 
 interface User {
   id: number;
   username: string;
   password_hash: string;
-  created_at: string;
-  updated_at: string;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface UserResponse {
   id: number;
   username: string;
-  created_at: string;
+  created_at: Date;
 }
 
 export const getAllUsers = async (): Promise<UserResponse[]> => {
-  const db = getDb();
-  return new Promise((resolve, reject) => {
-    db.all('SELECT id, username, created_at FROM users ORDER BY created_at DESC', [], (err: Error, rows: UserResponse[]) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(rows);
-      }
-    });
+  const prisma = getDb() as PrismaClient;
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      username: true,
+      created_at: true,
+    },
+    orderBy: {
+      created_at: 'desc',
+    },
   });
+  return users;
 };
 
 export const createUser = async (username: string, passwordHash: string): Promise<number> => {
-  const db = getDb();
-  return new Promise((resolve, reject) => {
-    db.run(
-      'INSERT INTO users (username, password_hash) VALUES (?, ?)',
-      [username, passwordHash],
-      // FIX: Explicitly type 'this' for the callback function.
-      // The 'sqlite3' library binds 'this' to an object containing 'lastID' on success.
-      function(this: { lastID: number }, err: Error) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(this.lastID);
-        }
-      }
-    );
+  const prisma = getDb() as PrismaClient;
+  const user = await prisma.user.create({
+    data: {
+      username,
+      password_hash: passwordHash,
+    },
   });
+  return user.id;
 };
 
 export const getUserByUsername = async (username: string): Promise<User | null> => {
-  const db = getDb();
-  return new Promise((resolve, reject) => {
-    db.get('SELECT * FROM users WHERE username = ?', [username], (err: Error, row: User) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(row || null);
-      }
-    });
+  const prisma = getDb() as PrismaClient;
+  const user = await prisma.user.findUnique({
+    where: {
+      username,
+    },
   });
+  return user;
 };
 
 export const getUserById = async (id: number): Promise<User | null> => {
-  const db = getDb();
-  return new Promise((resolve, reject) => {
-    db.get('SELECT * FROM users WHERE id = ?', [id], (err: Error, row: User) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(row || null);
-      }
-    });
+  const prisma = getDb() as PrismaClient;
+  const user = await prisma.user.findUnique({
+    where: {
+      id,
+    },
   });
+  return user;
 };

@@ -10,7 +10,7 @@ export const useUserStore = defineStore('user', () => {
     try {
       const user = await apiService.login({ username, password });
       currentUser.value = user;
-      localStorage.setItem('userId', user.id.toString());
+      sessionStorage.setItem('userId', user.id.toString());
       return user;
     } catch (error) {
       throw error;
@@ -23,7 +23,7 @@ export const useUserStore = defineStore('user', () => {
       // After registration, automatically log in
       const user = await apiService.login({ username, password });
       currentUser.value = user;
-      localStorage.setItem('userId', user.id.toString());
+      sessionStorage.setItem('userId', user.id.toString());
       return result;
     } catch (error) {
       throw error;
@@ -32,18 +32,18 @@ export const useUserStore = defineStore('user', () => {
 
   const logout = () => {
     currentUser.value = null;
-    localStorage.removeItem('userId');
+    sessionStorage.removeItem('userId');
   };
 
   const initializeAuth = async () => {
-    const userId = localStorage.getItem('userId');
+    const userId = sessionStorage.getItem('userId');
     if (userId) {
       try {
         const user = await apiService.getUser(parseInt(userId));
         currentUser.value = user;
       } catch (error) {
-        // If user not found or error, clear localStorage
-        localStorage.removeItem('userId');
+        // If user not found or error, clear sessionStorage
+        sessionStorage.removeItem('userId');
       }
     }
   };
