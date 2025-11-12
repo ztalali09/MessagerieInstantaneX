@@ -23,8 +23,8 @@
 
     Exemples :
     npm run build
-    node dist/main.js encrypt input.wav encrypted.wav mykey.bin
-    node dist/main.js decrypt encrypted.wav decrypted.wav mykey.bin
+    node dist/main.js encrypt test500kb.wav crypted500kb.wav mykey.bin
+    node dist/main.js decrypt crypted500kb.wav out500kb.wav mykey.bin
 
   Remarques :
   - Le programme chiffre/déchiffre des fichiers WAV 16-bit en opérant sur les samples.
@@ -200,6 +200,73 @@ function decryptAudio(inputPath: string, outputPath: string, keyPath: string): v
   }
 }
 
+/**
+ * Chiffre un fichier binaire (image) avec AES-256-CBC
+ */
+function encryptImageAES(inputPath: string, outputPath: string, keyPath: string): void {
+  console.log('=== Chiffrement Image (AES-256-CBC) ===\n');
+  try {
+    const aes = new AESEncryption();
+
+    console.log(`Chargement de l'image : ${inputPath}`);
+    const data = fs.readFileSync(inputPath);
+    console.log('✓ Image chargée\n');
+
+    console.log('Génération de la clé...');
+    const key = aes.generateKey();
+    console.log(`✓ Clé générée (${key.length} bytes)\n`);
+
+    console.log('Chiffrement en cours...');
+    const start = Date.now();
+    const encrypted = aes.encrypt(data, key);
+    const elapsed = Date.now() - start;
+    console.log(`✓ Chiffrement terminé en ${elapsed}ms\n`);
+
+    console.log(`Sauvegarde de la clé : ${keyPath}`);
+    aes.saveKeyToFile(key, keyPath);
+    console.log('✓ Clé sauvegardée\n');
+
+    console.log(`Sauvegarde du fichier chiffré : ${outputPath}`);
+    fs.writeFileSync(outputPath, encrypted);
+    console.log('✓ Image chiffrée sauvegardée\n');
+  } catch (err) {
+    console.error('Erreur lors du chiffrement de l\'image :', err);
+    process.exit(1);
+  }
+}
+
+/**
+ * Déchiffre un fichier binaire (image) avec AES-256-CBC
+ */
+function decryptImageAES(inputPath: string, outputPath: string, keyPath: string): void {
+  console.log('=== Déchiffrement Image (AES-256-CBC) ===\n');
+  try {
+    const aes = new AESEncryption();
+
+    console.log(`Chargement du fichier chiffré : ${inputPath}`);
+    const encrypted = fs.readFileSync(inputPath);
+    console.log('✓ Fichier chiffré chargé\n');
+
+    console.log(`Chargement de la clé : ${keyPath}`);
+    const key = aes.loadKeyFromFile(keyPath);
+    console.log(`✓ Clé chargée (${key.length} bytes)\n`);
+
+    console.log('Déchiffrement en cours...');
+    const start = Date.now();
+    const decrypted = aes.decrypt(encrypted, key);
+    const elapsed = Date.now() - start;
+    console.log(`✓ Déchiffrement terminé en ${elapsed}ms\n`);
+
+    console.log(`Sauvegarde du fichier déchiffré : ${outputPath}`);
+    fs.writeFileSync(outputPath, decrypted);
+    console.log('✓ Image déchiffrée sauvegardée\n');
+  } catch (err) {
+    console.error('Erreur lors du déchiffrement de l\'image :', err);
+    process.exit(1);
+  }
+}
+
+
 // Programme principal
 const args = process.argv.slice(2);
 
@@ -228,21 +295,21 @@ if (operation === 'encrypt') {
     encryptTextAES(inputPath, outputPath, keyPath);
   } else if (inputExt === '.wav') {
     encryptAudio(inputPath, outputPath, keyPath);
+  } else if (['.png', '.jpg', '.jpeg', '.bmp'].includes(inputExt)) {
+    encryptImageAES(inputPath, outputPath, keyPath);
   } else {
-    console.error('Type de fichier d\'entrée non supporté pour encrypt. Utilisez .wav ou .txt');
+    console.error('Type de fichier d\'entrée non supporté pour encrypt. Utilisez .wav, .txt ou image (.png/.jpg/.bmp)');
     process.exit(1);
   }
 } else if (operation === 'decrypt') {
-  // Treat as text AES decrypt if the intended output is .txt or input has .enc extension
-  if (outputExt === '.txt' || inputExt === '.enc') {
+  if (outputExt === '.txt' || inputExt.endsWith('.enc')) {
     decryptTextAES(inputPath, outputPath, keyPath);
   } else if (inputExt === '.wav') {
     decryptAudio(inputPath, outputPath, keyPath);
+  } else if (['.png', '.jpg', '.jpeg', '.bmp'].includes(outputExt) || ['.png', '.jpg', '.jpeg', '.bmp'].includes(inputExt)) {
+    decryptImageAES(inputPath, outputPath, keyPath);
   } else {
-    console.error('Type de fichier d\'entrée non supporté pour decrypt. Utilisez .wav pour audio ou fournissez un output .txt pour AES.');
+    console.error('Type de fichier d\'entrée non supporté pour decrypt. Utilisez .wav, .txt ou image (.png/.jpg/.bmp)');
     process.exit(1);
   }
-} else {
-  console.error('Opération invalide. Utilisez "encrypt" ou "decrypt"');
-  process.exit(1);
 }
