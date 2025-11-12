@@ -34,6 +34,9 @@
 
 import AudioCrypto from './crypto-samples';
 import AudioFile from './audio';
+import AESEncryption from './crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Chiffre un fichier audio avec XOR basé sur une clé
@@ -81,6 +84,76 @@ function encryptAudio(inputPath: string, outputPath: string, keyPath: string): v
     console.log('✓ Fichier chiffré sauvegardé\n');
   } catch (error) {
     console.error('Erreur lors du chiffrement :', error);
+    process.exit(1);
+  }
+}
+
+/**
+ * Chiffre un fichier texte avec AES-256-CBC
+ */
+function encryptTextAES(inputPath: string, outputPath: string, keyPath: string): void {
+  console.log('=== Chiffrement TXT (AES-256-CBC) ===\n');
+  try {
+    const aes = new AESEncryption();
+
+    // Lire le texte en UTF-8
+    console.log(`Chargement du fichier texte : ${inputPath}`);
+    const data = fs.readFileSync(inputPath);
+    console.log('✓ Fichier lu\n');
+
+    // Générer clé
+    console.log('Génération de la clé...');
+    const key = aes.generateKey();
+    console.log(`✓ Clé générée (${key.length} bytes)\n`);
+
+    // Chiffrer
+    console.log('Chiffrement en cours...');
+    const start = Date.now();
+    const encrypted = aes.encrypt(data, key);
+    const elapsed = Date.now() - start;
+    console.log(`✓ Chiffrement terminé en ${elapsed}ms\n`);
+
+    // Sauvegarder clé et données
+    console.log(`Sauvegarde de la clé : ${keyPath}`);
+    aes.saveKeyToFile(key, keyPath);
+    console.log('✓ Clé sauvegardée\n');
+
+    console.log(`Sauvegarde du fichier chiffré : ${outputPath}`);
+    fs.writeFileSync(outputPath, encrypted);
+    console.log('✓ Fichier chiffré sauvegardé\n');
+  } catch (err) {
+    console.error('Erreur lors du chiffrement TXT :', err);
+    process.exit(1);
+  }
+}
+
+/**
+ * Déchiffre un fichier texte chiffré avec AES-256-CBC
+ */
+function decryptTextAES(inputPath: string, outputPath: string, keyPath: string): void {
+  console.log('=== Déchiffrement TXT (AES-256-CBC) ===\n');
+  try {
+    const aes = new AESEncryption();
+
+    console.log(`Chargement du fichier chiffré : ${inputPath}`);
+    const encrypted = fs.readFileSync(inputPath);
+    console.log('✓ Fichier chiffré lu\n');
+
+    console.log(`Chargement de la clé : ${keyPath}`);
+    const key = aes.loadKeyFromFile(keyPath);
+    console.log(`✓ Clé chargée (${key.length} bytes)\n`);
+
+    console.log('Déchiffrement en cours...');
+    const start = Date.now();
+    const decrypted = aes.decrypt(encrypted, key);
+    const elapsed = Date.now() - start;
+    console.log(`✓ Déchiffrement terminé en ${elapsed}ms\n`);
+
+    console.log(`Sauvegarde du fichier déchiffré : ${outputPath}`);
+    fs.writeFileSync(outputPath, decrypted);
+    console.log('✓ Fichier déchiffré sauvegardé\n');
+  } catch (err) {
+    console.error('Erreur lors du déchiffrement TXT :', err);
     process.exit(1);
   }
 }
@@ -143,10 +216,32 @@ const inputPath = args[1];
 const outputPath = args[2];
 const keyPath = args[3];
 
+// Dispatch based on operation and file extensions.
+// Rules:
+// - encrypt: if input is .txt => AES text; if .wav => audio XOR
+// - decrypt: if output is .txt or input is .enc => AES text; if input is .wav => audio XOR
+const inputExt = path.extname(inputPath).toLowerCase();
+const outputExt = path.extname(outputPath).toLowerCase();
+
 if (operation === 'encrypt') {
-  encryptAudio(inputPath, outputPath, keyPath);
+  if (inputExt === '.txt') {
+    encryptTextAES(inputPath, outputPath, keyPath);
+  } else if (inputExt === '.wav') {
+    encryptAudio(inputPath, outputPath, keyPath);
+  } else {
+    console.error('Type de fichier d\'entrée non supporté pour encrypt. Utilisez .wav ou .txt');
+    process.exit(1);
+  }
 } else if (operation === 'decrypt') {
-  decryptAudio(inputPath, outputPath, keyPath);
+  // Treat as text AES decrypt if the intended output is .txt or input has .enc extension
+  if (outputExt === '.txt' || inputExt === '.enc') {
+    decryptTextAES(inputPath, outputPath, keyPath);
+  } else if (inputExt === '.wav') {
+    decryptAudio(inputPath, outputPath, keyPath);
+  } else {
+    console.error('Type de fichier d\'entrée non supporté pour decrypt. Utilisez .wav pour audio ou fournissez un output .txt pour AES.');
+    process.exit(1);
+  }
 } else {
   console.error('Opération invalide. Utilisez "encrypt" ou "decrypt"');
   process.exit(1);
