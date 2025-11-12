@@ -36,7 +36,7 @@ COPY --from=builder /app/backend/package*.json ./backend/
 
 # Install only production dependencies
 WORKDIR /app/backend
-RUN npm ci --only=production --no-audit --no-fund && npm cache clean --force
+RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
