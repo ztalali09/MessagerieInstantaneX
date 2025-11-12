@@ -1,46 +1,30 @@
-# Build stage
-FROM node:18-alpine AS builder
+# Use Node.js 18 Alpine as base image
+FROM node:18-alpine
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files from root (since we're building from project root)
 COPY package*.json ./
+COPY backend/package*.json ./backend/
 
 # Install all dependencies (including dev dependencies for building)
 RUN npm install
 
-# Copy source code
-COPY src/ ./src/
-COPY prisma/ ./prisma/
-COPY tsconfig*.json ./
+# Copy entire project
+COPY . .
 
-# Build the application using Nx
+# Build the backend application using Nx
 RUN npx nx build @message-x/backend --configuration=production
 
-# Production stage
-FROM node:18-alpine AS production
-
-# Set working directory
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install only production dependencies
-RUN npm install --omit=dev
-
-# Copy built application from builder stage
-COPY --from=builder /app/dist/ ./dist/
-
-# Copy Prisma schema and migrations
-COPY --from=builder /app/prisma/ ./prisma/
-
 # Generate Prisma client
-RUN npx prisma generate
+RUN npx prisma generate --schema=./backend/prisma/schema.prisma
 
 # Expose port
 EXPOSE 3000
+
+# Set working directory to backend
+WORKDIR /app/backend
 
 # Start the application
 CMD ["node", "dist/main.js"]
