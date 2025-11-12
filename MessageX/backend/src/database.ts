@@ -35,41 +35,16 @@ async function createTables(db: Database): Promise<void> {
     );
   `;
 
-  const groupsSql = `
-    CREATE TABLE IF NOT EXISTS groups (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      description TEXT,
-      created_by INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (created_by) REFERENCES users (id)
-    );
-  `;
-
-  const groupMembersSql = `
-    CREATE TABLE IF NOT EXISTS group_members (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      group_id INTEGER NOT NULL,
-      user_id INTEGER NOT NULL,
-      joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (group_id) REFERENCES groups (id),
-      FOREIGN KEY (user_id) REFERENCES users (id),
-      UNIQUE(group_id, user_id)
-    );
-  `;
-
   const messagesSql = `
     CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       from_user_id INTEGER NOT NULL,
       to_user_id INTEGER,
       room TEXT,
-      group_id INTEGER,
       message TEXT NOT NULL,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (from_user_id) REFERENCES users (id),
-      FOREIGN KEY (to_user_id) REFERENCES users (id),
-      FOREIGN KEY (group_id) REFERENCES groups (id)
+      FOREIGN KEY (to_user_id) REFERENCES users (id)
     );
   `;
 
@@ -80,29 +55,13 @@ async function createTables(db: Database): Promise<void> {
         reject(err);
       } else {
         console.log('Users table ready.');
-        db.run(groupsSql, (err) => {
+        db.run(messagesSql, (err) => {
           if (err) {
-            console.error('Failed to create groups table:', err.message);
+            console.error('Failed to create messages table:', err.message);
             reject(err);
           } else {
-            console.log('Groups table ready.');
-            db.run(groupMembersSql, (err) => {
-              if (err) {
-                console.error('Failed to create group_members table:', err.message);
-                reject(err);
-              } else {
-                console.log('Group members table ready.');
-                db.run(messagesSql, (err) => {
-                  if (err) {
-                    console.error('Failed to create messages table:', err.message);
-                    reject(err);
-                  } else {
-                    console.log('Messages table ready.');
-                    resolve();
-                  }
-                });
-              }
-            });
+            console.log('Messages table ready.');
+            resolve();
           }
         });
       }

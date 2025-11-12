@@ -3,7 +3,6 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import { saveMessage, getRecentMessagesForUser } from './models/messages';
-import { isUserInGroup } from './models/groups';
 
 // Define a type for the messages for better type safety
 interface IChatMessage {
@@ -76,38 +75,7 @@ export const initializeSocketIO = (httpServer: HttpServer) => {
       // socket.to(room).emit('user_joined', { userId: socket.id });
     });
 
-    /**
-     * Listen for a 'join_group' event
-     * @param {number} groupId - The ID of the group to join
-     * @param {number} userId - The ID of the user joining
-     */
-    socket.on('join_group', async (data: { groupId: number; userId: number }) => {
-      try {
-        const isMember = await isUserInGroup(data.groupId, data.userId);
-        if (isMember) {
-          socket.join(`group_${data.groupId}`);
-          console.log(`User ${data.userId} joined group room: group_${data.groupId}`);
-
-          // Send group message history
-          const messages = await getRecentMessagesForUser(data.userId, 50, undefined, `group_${data.groupId}`);
-          socket.emit('group_message_history', messages);
-        } else {
-          socket.emit('error', { message: 'You are not a member of this group' });
-        }
-      } catch (error) {
-        console.error('Error joining group:', error);
-        socket.emit('error', { message: 'Failed to join group' });
-      }
-    });
-
-    /**
-     * Listen for a 'leave_group' event
-     * @param {number} groupId - The ID of the group to leave
-     */
-    socket.on('leave_group', (groupId: number) => {
-      socket.leave(`group_${groupId}`);
-      console.log(`User ${socket.id} left group room: group_${groupId}`);
-    });
+    // --- Private Messaging Logic ---
 
     /**
      * Listen for a 'send_message' event
@@ -138,46 +106,6 @@ export const initializeSocketIO = (httpServer: HttpServer) => {
         console.log(`📤 Message broadcasted to room ${data.room}`);
       } catch (error) {
         console.error('Error saving room message:', error);
-      }
-    });
-
-    /**
-     * Listen for a 'send_group_message' event
-     * @param {object} data - The group message object
-     */
-    socket.on('send_group_message', async (data: { groupId: number; sender: string; message: string }) => {
-      console.log(`📨 Group message received from ${data.sender} in group ${data.groupId}: ${data.message}`);
-
-      try {
-        // Check if user is a member of the group
-        const isMember = await isUserInGroup(data.groupId, parseInt(data.sender));
-        if (!isMember) {
-          socket.emit('error', { message: 'You are not a member of this group' });
-          return;
-        }
-
-        // Save message to database
-        const messageId = await saveMessage(parseInt(data.sender), null, null, data.message, data.groupId);
-        console.log(`💾 Group message saved to database with ID: ${messageId}`);
-
-        // Create message object with database fields
-        const messageData = {
-          id: messageId,
-          from_user_id: parseInt(data.sender),
-          to_user_id: null,
-          room: null,
-          group_id: data.groupId,
-          message: data.message,
-          timestamp: new Date().toISOString(),
-          from_username: '', // Will be populated by frontend or fetched later
-          to_username: null
-        };
-
-        // Broadcast the received message to all clients in the same group room
-        io.to(`group_${data.groupId}`).emit('receive_group_message', messageData);
-        console.log(`📤 Group message broadcasted to group ${data.groupId}`);
-      } catch (error) {
-        console.error('Error saving group message:', error);
       }
     });
 

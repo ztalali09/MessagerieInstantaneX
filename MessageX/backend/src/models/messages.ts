@@ -5,7 +5,6 @@ export interface Message {
   from_user_id: number;
   to_user_id?: number;
   room?: string;
-  group_id?: number;
   message: string;
   timestamp: string;
 }
@@ -15,19 +14,18 @@ export interface MessageResponse {
   from_user_id: number;
   to_user_id: number;
   room?: string;
-  group_id?: number;
   message: string;
   timestamp: string;
   from_username?: string;
   to_username?: string;
 }
 
-export const saveMessage = async (fromUserId: number, toUserId: number | null, room: string | null, message: string, groupId?: number | null): Promise<number> => {
+export const saveMessage = async (fromUserId: number, toUserId: number | null, room: string | null, message: string): Promise<number> => {
   const db = getDb();
   return new Promise((resolve, reject) => {
     db.run(
-      'INSERT INTO messages (from_user_id, to_user_id, room, message, group_id) VALUES (?, ?, ?, ?, ?)',
-      [fromUserId, toUserId, room, message, groupId || null],
+      'INSERT INTO messages (from_user_id, to_user_id, room, message) VALUES (?, ?, ?, ?)',
+      [fromUserId, toUserId, room, message],
       function(this: { lastID: number }, err: Error) {
         if (err) {
           reject(err);
@@ -48,7 +46,6 @@ export const getMessagesBetweenUsers = async (userId1: number, userId2: number):
         m.from_user_id,
         m.to_user_id,
         m.room,
-        m.group_id,
         m.message,
         m.timestamp,
         u1.username as from_username,
@@ -79,7 +76,6 @@ export const getRecentMessagesForUser = async (userId: number, limit: number = 5
         m.from_user_id,
         m.to_user_id,
         m.room,
-        m.group_id,
         m.message,
         m.timestamp,
         u1.username as from_username,
