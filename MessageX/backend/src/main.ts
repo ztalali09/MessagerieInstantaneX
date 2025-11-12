@@ -94,7 +94,7 @@ process.on('SIGTERM', () => onShutdown('SIGTERM'));
 
 // Initialize database *then* start the server
 initializeDatabase()
-  .then(async () => {
+  .then(async (prisma) => {
     console.log('Database initialized successfully.');
     // Seed the database with initial users
     await seed();
