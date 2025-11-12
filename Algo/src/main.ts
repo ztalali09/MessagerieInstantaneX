@@ -35,6 +35,7 @@
 import AudioCrypto from './crypto-samples';
 import AudioFile from './audio';
 import AESEncryption from './crypto';
+import AESVideo from './crypto-video';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -266,6 +267,71 @@ function decryptImageAES(inputPath: string, outputPath: string, keyPath: string)
   }
 }
 
+/**
+ * Chiffre une vidéo avec AES-256-CBC
+ */
+function encryptVideoAES(inputPath: string, outputPath: string, keyPath: string): void {
+  console.log('=== Chiffrement Vidéo (AES-256-CBC) ===\n');
+  try {
+    const aesVideo = new AESVideo();
+
+    console.log(`Chargement du fichier vidéo : ${inputPath}`);
+    const data = fs.readFileSync(inputPath);
+    console.log('✓ Fichier vidéo lu\n');
+
+    console.log('Génération de la clé AES...');
+    const key = aesVideo.generateKey();
+    console.log(`✓ Clé générée (${key.length} bytes)\n`);
+
+    console.log('Chiffrement en cours...');
+    const start = Date.now();
+    const encrypted = aesVideo.encrypt(data, key);
+    const elapsed = Date.now() - start;
+    console.log(`✓ Chiffrement terminé en ${elapsed}ms\n`);
+
+    console.log(`Sauvegarde de la clé : ${keyPath}`);
+    aesVideo.saveKeyToFile(key, keyPath);
+    console.log('✓ Clé sauvegardée\n');
+
+    console.log(`Sauvegarde du fichier chiffré : ${outputPath}`);
+    fs.writeFileSync(outputPath, encrypted);
+    console.log('✓ Vidéo chiffrée sauvegardée\n');
+  } catch (err) {
+    console.error('Erreur lors du chiffrement vidéo :', err);
+    process.exit(1);
+  }
+}
+
+/**
+ * Déchiffre une vidéo avec AES-256-CBC
+ */
+function decryptVideoAES(inputPath: string, outputPath: string, keyPath: string): void {
+  console.log('=== Déchiffrement Vidéo (AES-256-CBC) ===\n');
+  try {
+    const aesVideo = new AESVideo();
+
+    console.log(`Chargement du fichier vidéo chiffré : ${inputPath}`);
+    const encrypted = fs.readFileSync(inputPath);
+    console.log('✓ Fichier chiffré lu\n');
+
+    console.log(`Chargement de la clé : ${keyPath}`);
+    const key = aesVideo.loadKeyFromFile(keyPath);
+    console.log(`✓ Clé chargée (${key.length} bytes)\n`);
+
+    console.log('Déchiffrement en cours...');
+    const start = Date.now();
+    const decrypted = aesVideo.decrypt(encrypted, key);
+    const elapsed = Date.now() - start;
+    console.log(`✓ Déchiffrement terminé en ${elapsed}ms\n`);
+
+    console.log(`Sauvegarde du fichier déchiffré : ${outputPath}`);
+    fs.writeFileSync(outputPath, decrypted);
+    console.log('✓ Vidéo déchiffrée sauvegardée\n');
+  } catch (err) {
+    console.error('Erreur lors du déchiffrement vidéo :', err);
+    process.exit(1);
+  }
+}
 
 // Programme principal
 const args = process.argv.slice(2);
@@ -297,6 +363,8 @@ if (operation === 'encrypt') {
     encryptAudio(inputPath, outputPath, keyPath);
   } else if (['.png', '.jpg', '.jpeg', '.bmp'].includes(inputExt)) {
     encryptImageAES(inputPath, outputPath, keyPath);
+  } else if (['.mp4', '.avi', '.mov', '.mkv'].includes(inputExt)) {
+    encryptVideoAES(inputPath, outputPath, keyPath);
   } else {
     console.error('Type de fichier d\'entrée non supporté pour encrypt. Utilisez .wav, .txt ou image (.png/.jpg/.bmp)');
     process.exit(1);
@@ -308,8 +376,10 @@ if (operation === 'encrypt') {
     decryptAudio(inputPath, outputPath, keyPath);
   } else if (['.png', '.jpg', '.jpeg', '.bmp'].includes(outputExt) || ['.png', '.jpg', '.jpeg', '.bmp'].includes(inputExt)) {
     decryptImageAES(inputPath, outputPath, keyPath);
+  } else if (['.mp4', '.avi', '.mov', '.mkv'].includes(inputExt)) {
+    decryptVideoAES(inputPath, outputPath, keyPath);
   } else {
-    console.error('Type de fichier d\'entrée non supporté pour decrypt. Utilisez .wav, .txt ou image (.png/.jpg/.bmp)');
+    console.error('Type de fichier d\'entrée non supporté pour decrypt. Utilisez .wav, .txt, image (.png/.jpg/.bmp) ou vidéo (.mp4/.avi/.mov/.mkv)');
     process.exit(1);
   }
 }
