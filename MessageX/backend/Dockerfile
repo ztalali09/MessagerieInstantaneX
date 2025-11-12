@@ -1,5 +1,5 @@
-# Use Node.js 18 Alpine as base image
-FROM node:18-alpine
+# Use Node.js 20 Alpine as base image
+FROM node:20-alpine
 
 # Set working directory
 WORKDIR /app
@@ -9,7 +9,7 @@ COPY package*.json ./
 COPY backend/package*.json ./backend/
 
 # Install all dependencies (including dev dependencies for building)
-RUN npm install
+RUN npm install && npm cache clean --force
 
 # Copy entire project
 COPY . .

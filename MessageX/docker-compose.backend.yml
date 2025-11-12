@@ -1,0 +1,19 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: messagex-backend
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/messagex?schema=public
+      - HOST=0.0.0.0
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    networks:
+      - messagex-network
+
+networks:
+  messagex-network:
+    driver: bridge
