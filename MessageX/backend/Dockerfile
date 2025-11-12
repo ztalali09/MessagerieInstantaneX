@@ -33,10 +33,14 @@ WORKDIR /app
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/backend/prisma ./backend/prisma
 COPY --from=builder /app/backend/package*.json ./backend/
+COPY --from=builder /app/backend/docker-entrypoint.sh ./backend/
 
 # Install only production dependencies
 WORKDIR /app/backend
 RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
+
+# Make entrypoint script executable
+RUN chmod +x docker-entrypoint.sh
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
@@ -50,4 +54,4 @@ EXPOSE 3000
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/main.js"]
+CMD ["./docker-entrypoint.sh"]
