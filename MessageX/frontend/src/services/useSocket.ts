@@ -10,7 +10,7 @@ export const useSocket = () => {
 
   onMounted(() => {
     // Connexion au serveur Socket.IO
-    socket.value = io('http://localhost:3000', {
+    socket.value = io(import.meta.env.VITE_API_URL || 'http://localhost:3000', {
       withCredentials: true,
       transports: ['websocket', 'polling']
     });
