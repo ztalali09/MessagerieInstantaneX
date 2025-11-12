@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MessageX</string>
+    <string name="title_activity_main">MessageX</string>
+    <string name="package_name">com.messagex.app</string>
+    <string name="custom_url_scheme">com.messagex.app</string>
+</resources>

@@ -1,5 +1,16 @@
 {
   "name": "@message-x/frontend",
   "version": "0.0.1",
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/ios": "^7.4.4"
+  },
+  "scripts": {
+    "build:cap": "nx build frontend && npx cap sync",
+    "build:ios": "nx build frontend && npx cap sync ios",
+    "build:android": "nx build frontend && npx cap sync android",
+    "open:ios": "npx cap open ios",
+    "open:android": "npx cap open android"
+  }
 }
