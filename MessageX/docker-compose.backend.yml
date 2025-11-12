@@ -5,20 +5,15 @@ services:
       dockerfile: backend/Dockerfile
     container_name: messagex-backend
     environment:
-      - DATABASE_URL=postgresql://postgres:eHrKnK7eaSiakhKB2NBeqwPYbc2A64RP9JpNmE7Q2ScItLBbrNm2IulICd4BW8hr@k0wosog4skkg4cs0g8wg4884:5432/postgres
+      - DATABASE_URL=postgres://postgres:eHrKnK7eaSiakhKB2NBeqwPYbc2A64RP9JpNmE7Q2ScItLBbrNm2IulICd4BW8hr@89.168.55.58:5454/postgres
       - HOST=0.0.0.0
       - PORT=3000
     ports:
       - "3000:3000"
     restart: unless-stopped
     networks:
-      - coolify
       - messagex-network
-    labels:
-      caddy_0.reverse_proxy: "{{upstreams 3000}}"
 
 networks:
-  coolify:
-    external: true
   messagex-network:
     driver: bridge
