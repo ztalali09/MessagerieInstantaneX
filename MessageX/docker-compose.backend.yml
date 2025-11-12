@@ -16,5 +16,7 @@ services:
       - messagex-network
 
 networks:
+  coolify:
+    external: true
   messagex-network:
     driver: bridge
