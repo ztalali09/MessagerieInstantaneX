@@ -5,15 +5,9 @@ services:
       dockerfile: backend/Dockerfile
     container_name: messagex-backend
     environment:
-      - DATABASE_URL=postgresql://postgres:eHrKnK7eaSiakhKB2NBeqwPYbc2A64RP9JpNmE7Q2ScItLBbrNm2IulICd4BW8hr@k0wosog4skkg4cs0g8wg4884:5432/postgres
+      - DATABASE_URL=postgres://postgres:eHrKnK7eaSiakhKB2NBeqwPYbc2A64RP9JpNmE7Q2ScItLBbrNm2IulICd4BW8hr@k0wosog4skkg4cs0g8wg4884:5432/postgres
       - HOST=0.0.0.0
       - PORT=3000
     ports:
       - "3000:3000"
     restart: unless-stopped
-    networks:
-      - messagex-network
-
-networks:
-  messagex-network:
-    driver: bridge
