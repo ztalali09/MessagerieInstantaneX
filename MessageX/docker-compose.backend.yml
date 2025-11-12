@@ -15,8 +15,7 @@ services:
       - coolify
       - messagex-network
     labels:
-      caddy: https://messagex.amethystrealms.games
-      caddy.reverse_proxy: "{{upstreams 3000}}"
+      caddy_0.reverse_proxy: "{{upstreams 3000}}"
 
 networks:
   coolify:
