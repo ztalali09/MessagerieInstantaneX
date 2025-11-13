@@ -8,7 +8,7 @@ import usersRouter from './routes/users';
 import { seed } from './seed';
 
 const host = process.env.HOST ?? '0.0.0.0';
-const port = process.env.PORT ? Number(process.env.PORT) : 3000;
+const port = process.env.PORT ? Number(process.env.PORT) : 80;
 
 const app = express();
 const server = createServer(app); // <-- Create the HTTP server

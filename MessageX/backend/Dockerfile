@@ -49,9 +49,6 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 RUN chown -R nodejs:nodejs /app
 USER nodejs
 
-# Expose port
-EXPOSE 3000
-
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["./docker-entrypoint.sh"]
