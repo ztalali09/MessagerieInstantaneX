@@ -33,8 +33,8 @@
 */
 
 import AudioCrypto from './crypto-samples';
-import AudioFile from './audio';
-import AESEncryption from './crypto';
+import AudioFile from './crypto-audio';
+import AESEncryption from './crypto-texte';
 import AESVideo from './crypto-video';
 import * as fs from 'fs';
 import * as path from 'path';
