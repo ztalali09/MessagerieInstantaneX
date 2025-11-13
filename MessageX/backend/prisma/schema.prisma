@@ -11,11 +11,13 @@ datasource db {
 }
 
 model User {
-  id          Int      @id @default(autoincrement())
-  username    String   @unique
-  password_hash String
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id              Int      @id @default(autoincrement())
+  username        String   @unique
+  password_hash   String
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  rsa_private_key String?
+  rsa_public_key  String?
 
   // Relations
   sentMessages     Message[] @relation("MessageFromUser")
@@ -25,16 +27,16 @@ model User {
 }
 
 model Message {
-  id         Int      @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   from_user_id Int
-  to_user_id  Int?
-  room       String?
-  message    String
-  timestamp  DateTime @default(now())
+  to_user_id   Int?
+  room         String?
+  message      String
+  timestamp    DateTime @default(now())
 
   // Relations
-  fromUser   User     @relation("MessageFromUser", fields: [from_user_id], references: [id])
-  toUser     User?    @relation("MessageToUser", fields: [to_user_id], references: [id])
+  fromUser User  @relation("MessageFromUser", fields: [from_user_id], references: [id])
+  toUser   User? @relation("MessageToUser", fields: [to_user_id], references: [id])
 
   @@map("messages")
 }

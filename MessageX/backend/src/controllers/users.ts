@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
-import { getAllUsers, createUser as createUserModel, getUserById } from '../models/users';
+import { getAllUsers, createUser as createUserModel, getUserById, getUserByUsername } from '../models/users';
 import bcrypt from 'bcrypt';
+import { generateRSAKeyPair } from '../crypto/rsa';
+import { encrypt } from '../crypto/aes';
 
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -31,7 +33,14 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    const userId = await createUserModel(username, passwordHash);
+    // Generate RSA key pair
+    const { publicKey, privateKey } = generateRSAKeyPair();
+
+    // Encrypt the private key with the user's password
+    const encryptedPrivateKey = encrypt(privateKey, password);
+
+    // Create user in the database
+    const userId = await createUserModel(username, passwordHash, encryptedPrivateKey, publicKey);
     res.status(201).json({
       id: userId,
       username,
@@ -44,6 +53,28 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     } else {
       res.status(500).json({ error: 'Failed to create user' });
     }
+  }
+};
+
+export const getUserPublicKey = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { username } = req.params;
+
+    if (!username) {
+      res.status(400).json({ error: 'Username is required' });
+      return;
+    }
+
+    const user = await getUserByUsername(username);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    res.json({ publicKey: user.rsa_public_key });
+  } catch (error) {
+    console.error('Error fetching user public key:', error);
+    res.status(500).json({ error: 'Failed to fetch user public key' });
   }
 };
 
@@ -73,3 +104,4 @@ export const getUser = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ error: 'Failed to fetch user' });
   }
 };
+

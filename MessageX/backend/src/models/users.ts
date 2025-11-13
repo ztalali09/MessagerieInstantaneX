@@ -1,19 +1,7 @@
 import { getDb } from '../database';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, User } from '@prisma/client';
 
-interface User {
-  id: number;
-  username: string;
-  password_hash: string;
-  created_at: Date;
-  updated_at: Date;
-}
-
-export interface UserResponse {
-  id: number;
-  username: string;
-  created_at: Date;
-}
+export type UserResponse = Pick<User, 'id' | 'username' | 'created_at'>;
 
 export const getAllUsers = async (): Promise<UserResponse[]> => {
   const prisma = getDb() as PrismaClient;
@@ -30,12 +18,14 @@ export const getAllUsers = async (): Promise<UserResponse[]> => {
   return users;
 };
 
-export const createUser = async (username: string, passwordHash: string): Promise<number> => {
+export const createUser = async (username: string, passwordHash: string, rsaPrivateKey: string, rsaPublicKey: string): Promise<number> => {
   const prisma = getDb() as PrismaClient;
   const user = await prisma.user.create({
     data: {
       username,
       password_hash: passwordHash,
+      rsa_private_key: rsaPrivateKey,
+      rsa_public_key: rsaPublicKey,
     },
   });
   return user.id;

@@ -6,6 +6,7 @@ import { initializeSocketIO } from './socket'; // <-- Import your socket initial
 import { initializeDatabase, closeDatabase } from './database';
 import usersRouter from './routes/users';
 import { seed } from './seed';
+import publicKeyRouter from './routes/publicKey';
 
 const host = process.env.HOST ?? '0.0.0.0';
 const port = process.env.PORT ? Number(process.env.PORT) : 80;
@@ -47,6 +48,7 @@ app.get('/', (req, res) => {
 
 // User routes
 app.use('/users', usersRouter);
+app.use('/', publicKeyRouter);
 
 // Group routes - REMOVED
 
