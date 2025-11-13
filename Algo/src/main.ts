@@ -32,10 +32,10 @@
   - Conserver la clé pour pouvoir déchiffrer plus tard.
 */
 
-import AudioCrypto from './crypto-samples';
-import AudioFile from './crypto-audio';
-import AESEncryption from './crypto-texte';
-import AESVideo from './crypto-video';
+import AudioCrypto from './AudioCrypto';
+import AudioFile from './AudioFile';
+import AESEncryption from './AESEncryption';
+import AESVideo from './AESVideo';
 import * as fs from 'fs';
 import * as path from 'path';
 
