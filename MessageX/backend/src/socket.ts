@@ -116,22 +116,60 @@ export const initializeSocketIO = (httpServer: HttpServer) => {
       console.log(`📨 Private message received:`, data);
 
       try {
-        // Save message to database and get the ID
-        const messageId = await saveMessage(parseInt(data.from), parseInt(data.to), null, data.message);
-        console.log(`💾 Message saved to database with ID: ${messageId}`);
-
-        // Fetch usernames from database
+        // Fetch receiver's and sender's public keys
         const { getUserById } = await import('./models/users.js');
-        const fromUser = await getUserById(parseInt(data.from));
         const toUser = await getUserById(parseInt(data.to));
+        const fromUser = await getUserById(parseInt(data.from));
+        if (!toUser || !toUser.publicKey) {
+          console.error('Receiver public key not found');
+          return;
+        }
+        if (!fromUser || !fromUser.publicKey) {
+          console.error('Sender public key not found');
+          return;
+        }
 
-        // Create message object with database fields
-        const messageData = {
+        // Generate random AES key
+        const { generateRandomAESKey, encryptMessage } = await import('./crypto/aes.js');
+        const aesKey = generateRandomAESKey();
+
+        // Encrypt the message with AES
+        const encryptedMessage = encryptMessage(data.message, aesKey);
+
+        // Encrypt the AES key with receiver's RSA public key
+        const { encryptWithPublicKey } = await import('./crypto/rsa.js');
+        const encryptedAESKeyForReceiver = encryptWithPublicKey(aesKey.toString('base64'), toUser.publicKey);
+
+        // Encrypt the AES key with sender's RSA public key
+        const encryptedAESKeyForSender = encryptWithPublicKey(aesKey.toString('base64'), fromUser.publicKey);
+
+        // Save encrypted message to database and get the ID
+        const messageId = await saveMessage(parseInt(data.from), parseInt(data.to), null, encryptedMessage, encryptedAESKeyForReceiver, encryptedAESKeyForSender, 'text');
+        console.log(`💾 Encrypted message saved to database with ID: ${messageId}`);
+
+        // Create message object for receiver (with receiver's encrypted key)
+        const messageDataForReceiver = {
           id: messageId,
           from_user_id: parseInt(data.from),
           to_user_id: parseInt(data.to),
           room: null,
-          message: data.message,
+          message: encryptedMessage,
+          encryptedKey: encryptedAESKeyForReceiver,
+          messageType: 'text', // For now, only text messages are encrypted
+          timestamp: new Date().toISOString(),
+          from_username: fromUser?.username || 'Unknown',
+          to_username: toUser?.username || 'Unknown'
+        };
+
+        // Create message object for sender (with sender's encrypted key)
+        const messageDataForSender = {
+          id: messageId,
+          from_user_id: parseInt(data.from),
+          to_user_id: parseInt(data.to),
+          room: null,
+          message: encryptedMessage,
+          encryptedKey: encryptedAESKeyForSender,
+          messageType: 'text', // For now, only text messages are encrypted
           timestamp: new Date().toISOString(),
           from_username: fromUser?.username || 'Unknown',
           to_username: toUser?.username || 'Unknown'
@@ -141,16 +179,16 @@ export const initializeSocketIO = (httpServer: HttpServer) => {
         // Find the recipient's socket and emit to them
         const recipientSocketId = getSocketIdByUserId(data.to);
         if (recipientSocketId) {
-          io.to(recipientSocketId).emit('receive_message', messageData);
-          console.log(`📤 Private message sent to user ${data.to}`);
+          io.to(recipientSocketId).emit('receive_message', messageDataForReceiver);
+          console.log(`📤 Encrypted private message and key sent to user ${data.to}`);
         } else {
           console.log(`❌ User ${data.to} not connected`);
         }
 
-        // Also send back to sender for confirmation
-        socket.emit('receive_message', messageData);
+        // Also send back to sender for confirmation (with sender's encrypted key)
+        socket.emit('receive_message', messageDataForSender);
       } catch (error) {
-        console.error('Error saving message:', error);
+        console.error('Error encrypting and saving message:', error);
       }
     });
 

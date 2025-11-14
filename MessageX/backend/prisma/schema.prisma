@@ -32,6 +32,9 @@ model Message {
   to_user_id  Int?
   room       String?
   message    String
+  encryptedKeyForReceiver String?
+  encryptedKeyForSender String?
+  messageType String   @default("text")
   timestamp  DateTime @default(now())
 
   // Relations

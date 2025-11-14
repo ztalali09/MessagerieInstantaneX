@@ -7,6 +7,9 @@ export interface Message {
   to_user_id?: number;
   room?: string;
   message: string;
+  encryptedKeyForReceiver?: string;
+  encryptedKeyForSender?: string;
+  messageType: string;
   timestamp: Date;
 }
 
@@ -16,12 +19,14 @@ export interface MessageResponse {
   to_user_id: number;
   room?: string;
   message: string;
+  encryptedKey?: string;
+  messageType: string;
   timestamp: Date;
   from_username?: string;
   to_username?: string;
 }
 
-export const saveMessage = async (fromUserId: number, toUserId: number | null, room: string | null, message: string): Promise<number> => {
+export const saveMessage = async (fromUserId: number, toUserId: number | null, room: string | null, message: string, encryptedKeyForReceiver?: string, encryptedKeyForSender?: string, messageType: string = 'text'): Promise<number> => {
   const prisma = getDb() as PrismaClient;
   const savedMessage = await prisma.message.create({
     data: {
@@ -29,6 +34,9 @@ export const saveMessage = async (fromUserId: number, toUserId: number | null, r
       to_user_id: toUserId,
       room: room,
       message: message,
+      encryptedKeyForReceiver: encryptedKeyForReceiver,
+      encryptedKeyForSender: encryptedKeyForSender,
+      messageType: messageType,
     },
   });
   return savedMessage.id;
@@ -72,6 +80,8 @@ export const getMessagesBetweenUsers = async (userId1: number, userId2: number):
     to_user_id: msg.to_user_id || 0,
     room: msg.room || undefined,
     message: msg.message,
+    encryptedKey: msg.from_user_id === userId1 ? msg.encryptedKeyForSender : msg.encryptedKeyForReceiver,
+    messageType: msg.messageType,
     timestamp: msg.timestamp,
     from_username: msg.fromUser?.username,
     to_username: msg.toUser?.username,
@@ -134,6 +144,8 @@ export const getRecentMessagesForUser = async (userId: number, limit: number = 5
     to_user_id: msg.to_user_id || 0,
     room: msg.room || undefined,
     message: msg.message,
+    encryptedKey: msg.from_user_id === userId ? msg.encryptedKeyForSender : msg.encryptedKeyForReceiver,
+    messageType: msg.messageType,
     timestamp: msg.timestamp,
     from_username: msg.fromUser?.username,
     to_username: msg.toUser?.username,
