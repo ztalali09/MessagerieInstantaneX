@@ -29,12 +29,13 @@ export const useSocket = () => {
         return '[No private key]';
       }
 
-      // First, decrypt the AES key using the private key
-      const aesKeyBase64 = decryptWithPrivateKey(encryptedKey, privateKey);
-      const aesKey = base64ToUint8Array(await aesKeyBase64);
+      // First, decrypt the AES key using the private key (async in frontend)
+      const aesKeyBase64 = await decryptWithPrivateKey(encryptedKey, privateKey);
+      const aesKey = base64ToUint8Array(aesKeyBase64);
 
-      // Then, decrypt the message using the AES key
-      return decryptMessage(encryptedMessage, aesKey);
+      // Then, decrypt the message using the AES key (async)
+      const decryptedText = await decryptMessage(encryptedMessage, aesKey);
+      return decryptedText;
     } catch (error) {
       console.error('Failed to decrypt message:', error);
       return '[Decryption failed]';
@@ -59,31 +60,40 @@ export const useSocket = () => {
     });
 
     // Écouter la réception de messages
-    socket.value.on('receive_message', (data: any) => {
+    socket.value.on('receive_message', async (data: any) => {
       console.log('📨 Message received:', data);
 
       // Decrypt the message if it's encrypted
       if (data.messageType === 'text' && data.encryptedKey) {
-        data.decryptedMessage = decryptMessageContent(data.message, data.encryptedKey);
+        try {
+          data.message = await decryptMessageContent(data.message, data.encryptedKey);
+        } catch (error) {
+          console.error('Failed to decrypt message:', error);
+          data.message = '[Decryption failed]';
+        }
       }
 
       messages.value.push(data);
     });
 
     // Écouter l'historique des messages
-    socket.value.on('message_history', (history: any[]) => {
+    socket.value.on('message_history', async (history: any[]) => {
       console.log('📚 Message history received:', history);
 
       // Decrypt messages in history
-      const decryptedHistory = history.map((msg: any) => {
-        if (msg.messageType === 'text' && msg.encryptedKey) {
-          return {
-            ...msg,
-            decryptedMessage: decryptMessageContent(msg.message, msg.encryptedKey)
-          };
-        }
-        return msg;
-      });
+      const decryptedHistory = await Promise.all(
+        history.map(async (msg: any) => {
+          if (msg.messageType === 'text' && msg.encryptedKey) {
+            try {
+              msg.message = await decryptMessageContent(msg.message, msg.encryptedKey);
+            } catch (error) {
+              console.error('Failed to decrypt message:', error);
+              msg.message = '[Decryption failed]';
+            }
+          }
+          return msg;
+        })
+      );
 
       messages.value.push(...decryptedHistory);
     });
