@@ -5,7 +5,6 @@ import { createServer } from 'http'; // <-- Import Node's http server
 import { initializeSocketIO } from './socket'; // <-- Import your socket initializer
 import { initializeDatabase, closeDatabase } from './database';
 import usersRouter from './routes/users';
-import { seed } from './seed';
 
 const host = process.env.HOST ?? '0.0.0.0';
 const port = process.env.PORT ? Number(process.env.PORT) : 80;
@@ -94,10 +93,8 @@ process.on('SIGTERM', () => onShutdown('SIGTERM'));
 
 // Initialize database *then* start the server
 initializeDatabase()
-  .then(async (prisma) => {
+  .then((prisma) => {
     console.log('Database initialized successfully.');
-    // Seed the database with initial users
-    await seed();
 
     // Start listening on the http server, NOT the express app
     server.listen(port, host, () => {

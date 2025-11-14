@@ -46,23 +46,17 @@ class ApiService {
   }
 
   async register(data: RegisterData): Promise<{ id: number; username: string; message: string }> {
-    return this.request('/users', {
+    return this.request('/users/register', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async login(data: LoginData): Promise<User> {
-    // For now, we'll just check if user exists
-    // In a real app, you'd have a proper login endpoint
-    const users = await this.getUsers();
-    const user = users.find(u => u.username === data.username);
-
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    return user;
+    return this.request('/users/login', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   async getUsers(): Promise<User[]> {

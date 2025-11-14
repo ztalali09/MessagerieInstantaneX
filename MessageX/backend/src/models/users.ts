@@ -30,12 +30,14 @@ export const getAllUsers = async (): Promise<UserResponse[]> => {
   return users;
 };
 
-export const createUser = async (username: string, passwordHash: string): Promise<number> => {
+export const createUser = async (username: string, passwordHash: string, publicKey: string, encryptedPrivateKey: string): Promise<number> => {
   const prisma = getDb() as PrismaClient;
   const user = await prisma.user.create({
     data: {
       username,
       password_hash: passwordHash,
+      publicKey,
+      encryptedPrivateKey,
     },
   });
   return user.id;
