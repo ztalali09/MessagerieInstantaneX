@@ -1,8 +1,7 @@
 import { ref, computed } from 'vue';
 import { defineStore } from 'pinia';
 import { apiService, type User } from '../services/api';
-import { generateRSAKeyPair, encryptWithPublicKey } from '../crypto/rsa';
-import { generateAESKeyFromPassword, encryptPrivateKey, decryptPrivateKey } from '../crypto/aes';
+import { generateAESKeyFromPassword, decryptPrivateKey } from '../crypto/aes';
 
 export const useUserStore = defineStore('user', () => {
   const currentUser = ref<User | null>(null);
@@ -16,8 +15,10 @@ export const useUserStore = defineStore('user', () => {
 
       // Decrypt and store the private key
       const encryptedPrivateKey = await apiService.getEncryptedPrivateKey(user.id);
-      const aesKey = generateAESKeyFromPassword(password);
-      const privateKey = decryptPrivateKey(encryptedPrivateKey, aesKey);
+      // generateAESKeyFromPassword returns a Promise<CryptoKey>, so await it
+      const aesKey = await generateAESKeyFromPassword(password);
+      // decryptPrivateKey is async and returns the decrypted PEM, so await it as well
+      const privateKey = await decryptPrivateKey(encryptedPrivateKey, aesKey);
       sessionStorage.setItem('privateKey', privateKey);
 
       return user;
@@ -36,8 +37,8 @@ export const useUserStore = defineStore('user', () => {
 
       // Get and decrypt the private key from the backend
       const encryptedPrivateKey = await apiService.getEncryptedPrivateKey(user.id);
-      const aesKey = generateAESKeyFromPassword(password);
-      const privateKey = decryptPrivateKey(encryptedPrivateKey, aesKey);
+      const aesKey = await generateAESKeyFromPassword(password);
+      const privateKey = await decryptPrivateKey(encryptedPrivateKey, aesKey);
       sessionStorage.setItem('privateKey', privateKey);
 
       return result;
@@ -55,8 +56,8 @@ export const useUserStore = defineStore('user', () => {
     const userId = sessionStorage.getItem('userId');
     if (userId) {
       try {
-        const user = await apiService.getUser(parseInt(userId));
-        currentUser.value = user;
+        // directly assign to avoid redundant local variable
+        currentUser.value = await apiService.getUser(parseInt(userId));
       } catch (error) {
         // If user not found or error, clear sessionStorage
         sessionStorage.removeItem('userId');

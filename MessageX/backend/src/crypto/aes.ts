@@ -5,17 +5,26 @@ export const generateAESKeyFromPassword = (password: string): Buffer => {
 };
 
 export const encryptPrivateKey = (privateKey: string, aesKey: Buffer): string => {
-  const cipher = crypto.createCipheriv('aes-256-ecb', aesKey, Buffer.alloc(0)); // ECB mode does not use an IV
-  let encryptedPrivateKey = cipher.update(privateKey, 'utf8', 'base64');
-  encryptedPrivateKey += cipher.final('base64');
-  return encryptedPrivateKey;
+  // Use AES-256-CBC with a random IV and prepend the IV to the ciphertext (base64)
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-cbc', aesKey, iv);
+  let encrypted = cipher.update(privateKey, 'utf8', 'base64');
+  encrypted += cipher.final('base64');
+  return iv.toString('base64') + ':' + encrypted;
 };
 
 export const decryptPrivateKey = (encryptedPrivateKey: string, aesKey: Buffer): string => {
-  const decipher = crypto.createDecipheriv('aes-256-ecb', aesKey, Buffer.alloc(0));
-  let decryptedPrivateKey = decipher.update(encryptedPrivateKey, 'base64', 'utf8');
-  decryptedPrivateKey += decipher.final('utf8');
-  return decryptedPrivateKey;
+  // Expect format ivBase64:encryptedBase64
+  const parts = encryptedPrivateKey.split(':');
+  if (parts.length !== 2) {
+    throw new Error('Invalid encrypted private key format');
+  }
+  const iv = Buffer.from(parts[0], 'base64');
+  const encrypted = parts[1];
+  const decipher = crypto.createDecipheriv('aes-256-cbc', aesKey, iv);
+  let decrypted = decipher.update(encrypted, 'base64', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
 };
 
 export const generateRandomAESKey = (): Buffer => {

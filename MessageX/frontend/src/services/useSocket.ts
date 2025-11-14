@@ -21,7 +21,7 @@ export const useSocket = () => {
   const typingUsers = ref<string[]>([]);
 
   // Helper function to decrypt message content
-  const decryptMessageContent = (encryptedMessage: string, encryptedKey: string): string => {
+  const decryptMessageContent = async (encryptedMessage: string, encryptedKey: string): Promise<string> => {
     try {
       const privateKey = sessionStorage.getItem('privateKey');
       if (!privateKey) {
@@ -31,7 +31,7 @@ export const useSocket = () => {
 
       // First, decrypt the AES key using the private key
       const aesKeyBase64 = decryptWithPrivateKey(encryptedKey, privateKey);
-      const aesKey = base64ToUint8Array(aesKeyBase64);
+      const aesKey = base64ToUint8Array(await aesKeyBase64);
 
       // Then, decrypt the message using the AES key
       return decryptMessage(encryptedMessage, aesKey);

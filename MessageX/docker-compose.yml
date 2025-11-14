@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:15
+    image: postgres:17
     container_name: messagex-postgres
     environment:
       POSTGRES_DB: messagex
@@ -11,8 +11,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
-    networks:
-      - messagex-network
 
   backend:
     build:
@@ -28,12 +26,6 @@ services:
     depends_on:
       - postgres
     restart: unless-stopped
-    networks:
-      - messagex-network
 
 volumes:
   postgres_data:
-
-networks:
-  messagex-network:
-    driver: bridge
