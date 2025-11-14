@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { getAllUsers, createUser as createUserModel, getUserById, getUserByUsername } from '../models/users';
 import bcrypt from 'bcrypt';
 import { generateRSAKeyPair } from '../crypto/rsa';
-import * as crypto from 'crypto';
+import { generateAESKeyFromPassword, encryptPrivateKey, decryptPrivateKey } from '../crypto/aes';
 
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -36,13 +36,11 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     // Generate RSA key pair
     const { publicKey, privateKey } = generateRSAKeyPair();
 
-    // Derive AES key from password using SHA-256
-    const aesKey = crypto.createHash('sha256').update(password).digest();
+    // Generate AES key from password
+    const aesKey = generateAESKeyFromPassword(password);
 
-    // Encrypt private key with AES-256-ECB
-    const cipher = crypto.createCipheriv('aes-256-ecb', aesKey, Buffer.alloc(0)); // ECB mode does not use an IV
-    let encryptedPrivateKey = cipher.update(privateKey, 'utf8', 'base64');
-    encryptedPrivateKey += cipher.final('base64');
+    // Encrypt private key with AES
+    const encryptedPrivateKey = encryptPrivateKey(privateKey, aesKey);
 
     const userId = await createUserModel(username, passwordHash, publicKey, encryptedPrivateKey);
     res.status(201).json({
