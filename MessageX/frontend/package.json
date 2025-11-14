@@ -14,5 +14,8 @@
     "build:android": "nx build frontend && npx cap sync android",
     "open:ios": "npx cap open ios",
     "open:android": "npx cap open android"
+  },
+  "dependencies": {
+    "crypto": "^1.0.1"
   }
 }

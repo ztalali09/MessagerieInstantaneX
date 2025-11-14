@@ -118,3 +118,28 @@ export const getUser = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ error: 'Failed to fetch user' });
   }
 };
+
+export const getEncryptedPrivateKey = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const userId = parseInt(id, 10);
+
+    if (isNaN(userId)) {
+      res.status(400).json({ error: 'Invalid user ID' });
+      return;
+    }
+
+    const user = await getUserById(userId);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    res.json({
+      encryptedPrivateKey: user.encryptedPrivateKey
+    });
+  } catch (error) {
+    console.error('Error fetching encrypted private key:', error);
+    res.status(500).json({ error: 'Failed to fetch encrypted private key' });
+  }
+};

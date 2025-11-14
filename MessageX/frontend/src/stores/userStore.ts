@@ -1,6 +1,8 @@
 import { ref, computed } from 'vue';
 import { defineStore } from 'pinia';
 import { apiService, type User } from '../services/api';
+import { generateRSAKeyPair, encryptWithPublicKey } from '../crypto/rsa';
+import { generateAESKeyFromPassword, encryptPrivateKey, decryptPrivateKey } from '../crypto/aes';
 
 export const useUserStore = defineStore('user', () => {
   const currentUser = ref<User | null>(null);
@@ -11,6 +13,13 @@ export const useUserStore = defineStore('user', () => {
       const user = await apiService.login({ username, password });
       currentUser.value = user;
       sessionStorage.setItem('userId', user.id.toString());
+
+      // Decrypt and store the private key
+      const encryptedPrivateKey = await apiService.getEncryptedPrivateKey(user.id);
+      const aesKey = generateAESKeyFromPassword(password);
+      const privateKey = decryptPrivateKey(encryptedPrivateKey, aesKey);
+      sessionStorage.setItem('privateKey', privateKey);
+
       return user;
     } catch (error) {
       throw error;
@@ -24,6 +33,13 @@ export const useUserStore = defineStore('user', () => {
       const user = await apiService.login({ username, password });
       currentUser.value = user;
       sessionStorage.setItem('userId', user.id.toString());
+
+      // Get and decrypt the private key from the backend
+      const encryptedPrivateKey = await apiService.getEncryptedPrivateKey(user.id);
+      const aesKey = generateAESKeyFromPassword(password);
+      const privateKey = decryptPrivateKey(encryptedPrivateKey, aesKey);
+      sessionStorage.setItem('privateKey', privateKey);
+
       return result;
     } catch (error) {
       throw error;

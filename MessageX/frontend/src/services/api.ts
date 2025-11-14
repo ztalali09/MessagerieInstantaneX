@@ -11,6 +11,13 @@ export interface RegisterData {
   password: string;
 }
 
+export interface RegisterWithKeysData {
+  username: string;
+  password: string;
+  publicKey: string;
+  encryptedPrivateKey: string;
+}
+
 export interface LoginData {
   username: string;
   password: string;
@@ -66,6 +73,11 @@ class ApiService {
 
   async getUser(id: number): Promise<User> {
     return this.request(`/users/${id}`);
+  }
+
+  async getEncryptedPrivateKey(userId: number): Promise<string> {
+    const response = await this.request<{ encryptedPrivateKey: string }>(`/users/${userId}/private-key`);
+    return response.encryptedPrivateKey;
   }
 }
 

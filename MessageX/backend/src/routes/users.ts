@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getUsers, createUser, getUser, loginUser } from '../controllers/users';
+import { getUsers, createUser, getUser, loginUser, getEncryptedPrivateKey } from '../controllers/users';
 
 const router = Router();
 
@@ -8,6 +8,9 @@ router.get('/', getUsers);
 
 // GET /users/:id - Get user by ID
 router.get('/:id', getUser);
+
+// GET /users/:id/private-key - Get encrypted private key
+router.get('/:id/private-key', getEncryptedPrivateKey);
 
 // POST /users/register - Create a new user
 router.post('/register', createUser);
