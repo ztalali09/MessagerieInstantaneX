@@ -11,13 +11,6 @@ export interface RegisterData {
   password: string;
 }
 
-export interface RegisterWithKeysData {
-  username: string;
-  password: string;
-  publicKey: string;
-  encryptedPrivateKey: string;
-}
-
 export interface LoginData {
   username: string;
   password: string;

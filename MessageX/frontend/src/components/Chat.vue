@@ -74,7 +74,7 @@ const loading = ref(false);
 const selectedUser = ref<User | null>(null);
 const messageText = ref('');
 const currentUserId = userStore.currentUser?.id.toString() || '';
-const typingTimeout = ref(null);
+const typingTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 
 const { messages, onlineUsers, typingUsers, sendMessage, startTyping, stopTyping } = useSocket();
 

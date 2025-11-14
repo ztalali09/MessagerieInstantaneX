@@ -1,7 +1,7 @@
-import { io } from 'socket.io-client';
-import { ref, onMounted, onUnmounted } from 'vue';
-import { decryptMessage } from '../crypto/aes';
-import { decryptWithPrivateKey } from '../crypto/rsa';
+import {io} from 'socket.io-client';
+import {onMounted, onUnmounted, ref} from 'vue';
+import {decryptMessage} from '../crypto/aes';
+import {decryptWithPrivateKey} from '../crypto/rsa';
 
 // Utility function to convert base64 to Uint8Array (browser-compatible)
 const base64ToUint8Array = (base64: string): Uint8Array => {
@@ -34,8 +34,7 @@ export const useSocket = () => {
       const aesKey = base64ToUint8Array(aesKeyBase64);
 
       // Then, decrypt the message using the AES key (async)
-      const decryptedText = await decryptMessage(encryptedMessage, aesKey);
-      return decryptedText;
+      return await decryptMessage(encryptedMessage, aesKey);
     } catch (error) {
       console.error('Failed to decrypt message:', error);
       return '[Decryption failed]';
