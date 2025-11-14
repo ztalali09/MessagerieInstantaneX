@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { getAllUsers, createUser as createUserModel, getUserById, getUserByUsername } from '../models/users';
 import bcrypt from 'bcrypt';
 import { generateRSAKeyPair } from '../crypto/rsa';
-import { generateAESKeyFromPassword, encryptPrivateKey, decryptPrivateKey } from '../crypto/aes';
+import { generateAESKeyFromPassword, encryptPrivateKey } from '../crypto/aes';
 
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
   try {
