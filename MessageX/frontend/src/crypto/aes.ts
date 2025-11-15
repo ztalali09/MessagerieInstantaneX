@@ -16,27 +16,6 @@ export const generateAESKeyFromPassword = async (password: string): Promise<Cryp
   );
 };
 
-// Chiffrer la clé privée
-export const encryptPrivateKey = async (privateKey: string, aesKey: CryptoKey): Promise<string> => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(privateKey);
-
-  // Générer un IV aléatoire
-  const iv = crypto.getRandomValues(new Uint8Array(16));
-
-  const encryptedBuffer = await crypto.subtle.encrypt(
-    { name: 'AES-CBC', iv },
-    aesKey,
-    data
-  );
-
-  // Convertir IV et données chiffrées en base64 et les séparer avec ':'
-  const ivBase64 = btoa(String.fromCharCode(...iv));
-  const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer)));
-
-  return ivBase64 + ':' + encryptedBase64;
-};
-
 // Déchiffrer la clé privée
 export const decryptPrivateKey = async (encryptedPrivateKey: string, aesKey: CryptoKey): Promise<string> => {
   // Support two formats:
@@ -68,38 +47,10 @@ export const decryptPrivateKey = async (encryptedPrivateKey: string, aesKey: Cry
   return decoder.decode(decryptedBuffer);
 };
 
-// Générer une clé AES aléatoire
-export const generateRandomAESKey = async (): Promise<CryptoKey> => {
-  return await crypto.subtle.generateKey(
-    { name: 'AES-CBC', length: 256 },
-    true, // extractable
-    ['encrypt', 'decrypt']
-  );
-};
-
-// Chiffrer un message
-export const encryptMessage = async (message: string, key: CryptoKey): Promise<string> => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(message);
-  const iv = crypto.getRandomValues(new Uint8Array(16));
-
-  const encryptedBuffer = await crypto.subtle.encrypt(
-    { name: 'AES-CBC', iv },
-    key,
-    data
-  );
-
-  // Convertir IV et données en base64
-  const ivBase64 = btoa(String.fromCharCode(...iv));
-  const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer)));
-
-  return ivBase64 + ':' + encryptedBase64;
-};
-
 // Déchiffrer un message
 export const decryptMessage = async (
   encryptedMessage: string,
-  key: CryptoKey | Uint8Array | ArrayBuffer
+  key: CryptoKey | BufferSource
 ): Promise<string> => {
   const parts = encryptedMessage.split(':');
   if (parts.length !== 2) throw new Error('Invalid encrypted message format');
@@ -109,22 +60,14 @@ export const decryptMessage = async (
   // Type guards
   const isCryptoKey = (k: any): k is CryptoKey => k && typeof k === 'object' && 'algorithm' in k;
 
-  // If a raw key (Uint8Array / ArrayBuffer) is provided, import it into a CryptoKey
+  // If a raw key (BufferSource) is provided, import it into a CryptoKey
   let cryptoKey: CryptoKey;
   if (isCryptoKey(key)) {
     cryptoKey = key as CryptoKey;
   } else {
-    // ArrayBuffer.isView handles TypedArray checks (Uint8Array, etc.)
-    let keyBuffer: ArrayBuffer | ArrayBufferView;
-    if (ArrayBuffer.isView(key)) {
-      keyBuffer = key as ArrayBufferView;
-    } else {
-      keyBuffer = key as ArrayBuffer;
-    }
-
     cryptoKey = await crypto.subtle.importKey(
       'raw',
-      keyBuffer,
+      key as BufferSource,
       { name: 'AES-CBC' },
       false,
       ['decrypt']
