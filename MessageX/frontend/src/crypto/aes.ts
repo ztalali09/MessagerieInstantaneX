@@ -1,5 +1,7 @@
 // Générer une clé AES à partir d'un mot de passe
-export const generateAESKeyFromPassword = async (password: string): Promise<CryptoKey> => {
+export const generateAESKeyFromPassword = async (
+  password: string
+): Promise<CryptoKey> => {
   const encoder = new TextEncoder();
   const passwordData = encoder.encode(password);
 
@@ -17,7 +19,10 @@ export const generateAESKeyFromPassword = async (password: string): Promise<Cryp
 };
 
 // Déchiffrer la clé privée
-export const decryptPrivateKey = async (encryptedPrivateKey: string, aesKey: CryptoKey): Promise<string> => {
+export const decryptPrivateKey = async (
+  encryptedPrivateKey: string,
+  aesKey: CryptoKey
+): Promise<string> => {
   // Support two formats:
   // 1) backend may return "ivBase64:encryptedBase64"
   // 2) frontend older format used a single base64 of IV+ciphertext
@@ -27,12 +32,15 @@ export const decryptPrivateKey = async (encryptedPrivateKey: string, aesKey: Cry
 
   if (encryptedPrivateKey.includes(':')) {
     const parts = encryptedPrivateKey.split(':');
-    if (parts.length !== 2) throw new Error('Invalid encrypted private key format');
-    iv = Uint8Array.from(atob(parts[0]), c => c.charCodeAt(0));
-    encryptedData = Uint8Array.from(atob(parts[1]), c => c.charCodeAt(0));
+    if (parts.length !== 2)
+      throw new Error('Invalid encrypted private key format');
+    iv = Uint8Array.from(atob(parts[0]), (c) => c.charCodeAt(0));
+    encryptedData = Uint8Array.from(atob(parts[1]), (c) => c.charCodeAt(0));
   } else {
     // decode single-base64 combined buffer
-    const combined = Uint8Array.from(atob(encryptedPrivateKey), c => c.charCodeAt(0));
+    const combined = Uint8Array.from(atob(encryptedPrivateKey), (c) =>
+      c.charCodeAt(0)
+    );
     iv = combined.slice(0, 16);
     encryptedData = combined.slice(16);
   }
@@ -54,11 +62,12 @@ export const decryptMessage = async (
 ): Promise<string> => {
   const parts = encryptedMessage.split(':');
   if (parts.length !== 2) throw new Error('Invalid encrypted message format');
-  const iv = Uint8Array.from(atob(parts[0]), c => c.charCodeAt(0));
-  const encryptedData = Uint8Array.from(atob(parts[1]), c => c.charCodeAt(0));
+  const iv = Uint8Array.from(atob(parts[0]), (c) => c.charCodeAt(0));
+  const encryptedData = Uint8Array.from(atob(parts[1]), (c) => c.charCodeAt(0));
 
   // Type guards
-  const isCryptoKey = (k: any): k is CryptoKey => k && typeof k === 'object' && 'algorithm' in k;
+  const isCryptoKey = (k: any): k is CryptoKey =>
+    k && typeof k === 'object' && 'algorithm' in k;
 
   // If a raw key (BufferSource) is provided, import it into a CryptoKey
   let cryptoKey: CryptoKey;

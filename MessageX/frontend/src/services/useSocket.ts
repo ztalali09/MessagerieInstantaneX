@@ -1,7 +1,9 @@
-import {io} from 'socket.io-client';
-import {onMounted, onUnmounted, ref} from 'vue';
-import {decryptMessage} from '../crypto/aes';
-import {decryptWithPrivateKey} from '../crypto/rsa';
+import { io } from 'socket.io-client';
+import { onMounted, onUnmounted, ref } from 'vue';
+import { decryptMessage } from '../crypto/aes';
+import { decryptWithPrivateKey } from '../crypto/rsa';
+import { secureStorage } from '../services/secureStorage';
+import { Capacitor } from '@capacitor/core';
 
 // Utility function to convert base64 to Uint8Array (browser-compatible)
 const base64ToUint8Array = (base64: string): Uint8Array => {
@@ -21,16 +23,22 @@ export const useSocket = () => {
   const typingUsers = ref<string[]>([]);
 
   // Helper function to decrypt message content
-  const decryptMessageContent = async (encryptedMessage: string, encryptedKey: string): Promise<string> => {
+  const decryptMessageContent = async (
+    encryptedMessage: string,
+    encryptedKey: string
+  ): Promise<string> => {
     try {
-      const privateKey = sessionStorage.getItem('privateKey');
+      const privateKey = await secureStorage.getItem('privateKey');
       if (!privateKey) {
-        console.error('No private key found in session storage');
+        console.error('No private key found in secure storage');
         return '[No private key]';
       }
 
       // First, decrypt the AES key using the private key (async in frontend)
-      const aesKeyBase64 = await decryptWithPrivateKey(encryptedKey, privateKey);
+      const aesKeyBase64 = await decryptWithPrivateKey(
+        encryptedKey,
+        privateKey
+      );
       const aesKey = base64ToUint8Array(aesKeyBase64);
 
       // Then, decrypt the message using the AES key (async)
@@ -45,27 +53,35 @@ export const useSocket = () => {
     // Connexion au serveur Socket.IO
     socket.value = io(import.meta.env.VITE_API_URL || 'http://localhost:3000', {
       withCredentials: true,
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
     });
 
     // Écouter la connexion
-    socket.value.on('connect', () => {
+    socket.value.on('connect', async () => {
       connected.value = true;
       console.log('Connecté au serveur Socket.IO');
 
       // Enregistrer l'utilisateur dans sa room
-      const userId = sessionStorage.getItem('userId');
+      const userId = await secureStorage.getItem('userId');
       socket.value.emit('register', userId);
     });
 
     // Écouter la réception de messages
     socket.value.on('receive_message', async (data: any) => {
+      console.log(
+        '📨 Message received (raw):',
+        JSON.parse(JSON.stringify(data))
+      );
+
       console.log('📨 Message received:', data);
 
       // Decrypt the message if it's encrypted
       if (data.messageType === 'text' && data.encryptedKey) {
         try {
-          data.message = await decryptMessageContent(data.message, data.encryptedKey);
+          data.message = await decryptMessageContent(
+            data.message,
+            data.encryptedKey
+          );
         } catch (error) {
           console.error('Failed to decrypt message:', error);
           data.message = '[Decryption failed]';
@@ -78,13 +94,20 @@ export const useSocket = () => {
     // Écouter l'historique des messages
     socket.value.on('message_history', async (history: any[]) => {
       console.log('📚 Message history received:', history);
+      console.log(
+        '📚 Message history received (raw):',
+        JSON.parse(JSON.stringify(history))
+      );
 
       // Decrypt messages in history
       const decryptedHistory = await Promise.all(
         history.map(async (msg: any) => {
           if (msg.messageType === 'text' && msg.encryptedKey) {
             try {
-              msg.message = await decryptMessageContent(msg.message, msg.encryptedKey);
+              msg.message = await decryptMessageContent(
+                msg.message,
+                msg.encryptedKey
+              );
             } catch (error) {
               console.error('Failed to decrypt message:', error);
               msg.message = '[Decryption failed]';
@@ -114,8 +137,8 @@ export const useSocket = () => {
     // Écouter quand un utilisateur se déconnecte
     socket.value.on('user_offline', (userId: string) => {
       console.log('⚫ User offline:', userId);
-      onlineUsers.value = onlineUsers.value.filter(id => id !== userId);
-      typingUsers.value = typingUsers.value.filter(id => id !== userId);
+      onlineUsers.value = onlineUsers.value.filter((id) => id !== userId);
+      typingUsers.value = typingUsers.value.filter((id) => id !== userId);
     });
 
     // Écouter les indicateurs de frappe
@@ -128,7 +151,7 @@ export const useSocket = () => {
 
     socket.value.on('user_stop_typing', (userId: string) => {
       console.log('🛑 User stop typing:', userId);
-      typingUsers.value = typingUsers.value.filter(id => id !== userId);
+      typingUsers.value = typingUsers.value.filter((id) => id !== userId);
     });
 
     // Gérer la déconnexion
@@ -144,26 +167,26 @@ export const useSocket = () => {
     }
   });
 
-  const sendMessage = (to: string, message: string) => {
-    const from = sessionStorage.getItem('userId');
+  const sendMessage = async (to: string, message: string) => {
+    const from = await secureStorage.getItem('userId');
     const data = {
       from,
       to,
       message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     console.log('📤 Sending message:', data);
     socket.value.emit('private-message', data);
   };
 
-  const startTyping = (toUserId: string) => {
-    const from = sessionStorage.getItem('userId');
+  const startTyping = async (toUserId: string) => {
+    const from = await secureStorage.getItem('userId');
     socket.value.emit('start_typing', { from, to: toUserId });
   };
 
-  const stopTyping = (toUserId: string) => {
-    const from = sessionStorage.getItem('userId');
+  const stopTyping = async (toUserId: string) => {
+    const from = await secureStorage.getItem('userId');
     socket.value.emit('stop_typing', { from, to: toUserId });
   };
 
@@ -175,6 +198,6 @@ export const useSocket = () => {
     typingUsers,
     sendMessage,
     startTyping,
-    stopTyping
+    stopTyping,
   };
 };

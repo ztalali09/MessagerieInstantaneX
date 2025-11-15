@@ -1,0 +1,6 @@
+{
+  "appId": "com.example.app",
+  "appName": "MessageX",
+  "webDir": "frontend/dist",
+  "bundledWebRuntime": false
+}
