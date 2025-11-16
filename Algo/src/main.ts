@@ -32,62 +32,11 @@
   - Conserver la clé pour pouvoir déchiffrer plus tard.
 */
 
-import AudioCrypto from './AudioCrypto';
-import AudioFile from './AudioFile';
 import AESEncryption from './AESEncryption';
 import AESVideo from './AESVideo';
+import AESAudio from './AESAudio';
 import * as fs from 'fs';
 import * as path from 'path';
-
-/**
- * Chiffre un fichier audio avec XOR basé sur une clé
- */
-function encryptAudio(inputPath: string, outputPath: string, keyPath: string): void {
-  console.log('=== Chiffrement Audio (XOR avec clé) ===\n');
-
-  try {
-    // Charger le fichier audio
-    console.log(`Chargement du fichier audio : ${inputPath}`);
-    const audioFile = AudioFile.loadWAVSamples(inputPath);
-    console.log(`✓ Fichier chargé`);
-    console.log(`  - Fréquence : ${audioFile.sampleRate} Hz`);
-    console.log(`  - Canaux : ${audioFile.channels}`);
-    console.log(`  - Profondeur : ${audioFile.bitDepth} bits`);
-    console.log(`  - Samples : ${audioFile.samples.length}\n`);
-
-    // Générer une clé
-    console.log('Génération de la clé...');
-    const key = AudioCrypto.generateKey();
-    console.log(`✓ Clé générée (${key.length} bytes)\n`);
-
-    // Sauvegarder la clé
-    console.log(`Sauvegarde de la clé : ${keyPath}`);
-    AudioCrypto.saveKeyToFile(key, keyPath);
-    console.log('✓ Clé sauvegardée\n');
-
-    // Chiffrer les samples
-    console.log('Chiffrement en cours...');
-    const startTime = Date.now();
-    const encryptedSamples = AudioCrypto.encryptSamples(audioFile.samples, key);
-    const endTime = Date.now();
-    console.log(`✓ Chiffrement terminé en ${endTime - startTime}ms\n`);
-
-    // Sauvegarder le fichier chiffré
-    console.log(`Sauvegarde du fichier chiffré : ${outputPath}`);
-    AudioFile.saveWAVSamples(
-      outputPath,
-      encryptedSamples,
-      audioFile.sampleRate,
-      audioFile.channels,
-      audioFile.bitDepth,
-      audioFile.fmtChunk
-    );
-    console.log('✓ Fichier chiffré sauvegardé\n');
-  } catch (error) {
-    console.error('Erreur lors du chiffrement :', error);
-    process.exit(1);
-  }
-}
 
 /**
  * Chiffre un fichier texte avec AES-256-CBC
@@ -160,43 +109,62 @@ function decryptTextAES(inputPath: string, outputPath: string, keyPath: string):
 }
 
 /**
- * Déchiffre un fichier audio avec XOR basé sur une clé
+ * Chiffre un fichier audio avec AES-256-CBC
  */
-function decryptAudio(inputPath: string, outputPath: string, keyPath: string): void {
-  console.log('=== Déchiffrement Audio (XOR avec clé) ===\n');
-
+function encryptAudioAES(inputPath: string, outputPath: string, keyPath: string): void {
+  console.log('=== Chiffrement Audio (AES-256-CBC) ===\n');
   try {
-    // Charger le fichier chiffré
-    console.log(`Chargement du fichier chiffré : ${inputPath}`);
-    const encryptedFile = AudioFile.loadWAVSamples(inputPath);
-    console.log(`✓ Fichier chargé`);
-    console.log(`  - Samples : ${encryptedFile.samples.length}\n`);
+    const aesAudio = new AESAudio();
 
-    // Charger la clé
+    console.log(`Chargement du fichier audio : ${inputPath}`);
+    const data = fs.readFileSync(inputPath);
+    console.log('✓ Fichier audio chargé\n');
+
+    console.log('Génération de la clé...');
+    const key = aesAudio.generateKey();
+    console.log(`✓ Clé générée (${key.length} bytes)\n`);
+
+    console.log('Chiffrement en cours...');
+    const start = Date.now();
+    const encrypted = aesAudio.encrypt(data, key);
+    const elapsed = Date.now() - start;
+    console.log(`✓ Chiffrement terminé en ${elapsed}ms\n`);
+
+    aesAudio.saveKeyToFile(key, keyPath);
+    fs.writeFileSync(outputPath, encrypted);
+    console.log('✓ Audio chiffré sauvegardé\n');
+  } catch (err) {
+    console.error('Erreur lors du chiffrement audio :', err);
+    process.exit(1);
+  }
+}
+
+/**
+ * Déchiffre un fichier audio avec AES-256-CBC
+ */
+function decryptAudioAES(inputPath: string, outputPath: string, keyPath: string): void {
+  console.log('=== Déchiffrement Audio (AES-256-CBC) ===\n');
+  try {
+    const aesAudio = new AESAudio();
+
+    console.log(`Chargement du fichier audio chiffré : ${inputPath}`);
+    const encrypted = fs.readFileSync(inputPath);
+    console.log('✓ Fichier audio chiffré chargé\n');
+
     console.log(`Chargement de la clé : ${keyPath}`);
-    const key = AudioCrypto.loadKeyFromFile(keyPath);
+    const key = aesAudio.loadKeyFromFile(keyPath);
     console.log(`✓ Clé chargée (${key.length} bytes)\n`);
 
-    // Déchiffrer les samples
     console.log('Déchiffrement en cours...');
-    const startTime = Date.now();
-    const decryptedSamples = AudioCrypto.decryptSamples(encryptedFile.samples, key);
-    const endTime = Date.now();
-    console.log(`✓ Déchiffrement terminé en ${endTime - startTime}ms\n`);
+    const start = Date.now();
+    const decrypted = aesAudio.decrypt(encrypted, key);
+    const elapsed = Date.now() - start;
+    console.log(`✓ Déchiffrement terminé en ${elapsed}ms\n`);
 
-    // Sauvegarder le fichier déchiffré
-    console.log(`Sauvegarde du fichier déchiffré : ${outputPath}`);
-    AudioFile.saveWAVSamples(
-      outputPath,
-      decryptedSamples,
-      encryptedFile.sampleRate,
-      encryptedFile.channels,
-      encryptedFile.bitDepth,
-       encryptedFile.fmtChunk
-    );
-    console.log('✓ Fichier déchiffré sauvegardé\n');
-  } catch (error) {
-    console.error('Erreur lors du déchiffrement :', error);
+    fs.writeFileSync(outputPath, decrypted);
+    console.log('✓ Audio déchiffré sauvegardé\n');
+  } catch (err) {
+    console.error('Erreur lors du déchiffrement audio :', err);
     process.exit(1);
   }
 }
@@ -359,10 +327,10 @@ const outputExt = path.extname(outputPath).toLowerCase();
 if (operation === 'encrypt') {
   if (inputExt === '.txt') {
     encryptTextAES(inputPath, outputPath, keyPath);
-  } else if (inputExt === '.wav') {
-    encryptAudio(inputPath, outputPath, keyPath);
   } else if (['.png', '.jpg', '.jpeg', '.bmp'].includes(inputExt)) {
     encryptImageAES(inputPath, outputPath, keyPath);
+  } else if (['.wav', '.mp3', '.flac', '.aac', '.ogg'].includes(inputExt)) {
+    encryptAudioAES(inputPath, outputPath, keyPath);
   } else if (['.mp4', '.avi', '.mov', '.mkv'].includes(inputExt)) {
     encryptVideoAES(inputPath, outputPath, keyPath);
   } else {
@@ -372,10 +340,10 @@ if (operation === 'encrypt') {
 } else if (operation === 'decrypt') {
   if (outputExt === '.txt' || inputExt.endsWith('.enc')) {
     decryptTextAES(inputPath, outputPath, keyPath);
-  } else if (inputExt === '.wav') {
-    decryptAudio(inputPath, outputPath, keyPath);
   } else if (['.png', '.jpg', '.jpeg', '.bmp'].includes(outputExt) || ['.png', '.jpg', '.jpeg', '.bmp'].includes(inputExt)) {
     decryptImageAES(inputPath, outputPath, keyPath);
+  } else if (['.wav', '.mp3', '.flac', '.aac', '.ogg'].includes(inputExt)) {
+    decryptAudioAES(inputPath, outputPath, keyPath);
   } else if (['.mp4', '.avi', '.mov', '.mkv'].includes(inputExt)) {
     decryptVideoAES(inputPath, outputPath, keyPath);
   } else {
