@@ -6,11 +6,13 @@ services:
     container_name: messagex-backend
     environment:
       - DATABASE_URL=postgres://postgres:XkxCOoQAkvZHBWxxyc7nlUWMKU3MFmv8HEct71RnZCpcLYEqzCxMIcrLgN4DEiUP@o0gwkcos0c0gccok0k4os08s:5432/postgres
-      - PORT=3000
+      - PORT=80
     networks:
       - coolify
+    expose:
+      - '80'
     ports:
-      - '3000:3000'
+      - '3000:80'
     restart: unless-stopped
 
 networks:
