@@ -6,6 +6,7 @@ import { secureStorage } from '../services/secureStorage';
 
 export const useUserStore = defineStore('user', () => {
   const currentUser = ref<User | null>(null);
+  const isAuthReady = ref(false);
   const isAuthenticated = computed(() => !!currentUser.value);
 
   const login = async (username: string, password: string) => {
@@ -50,13 +51,17 @@ export const useUserStore = defineStore('user', () => {
     await secureStorage.removeItem('privateKey'); // Also remove the private key on logout
   };
 
-  const initializeAuth = async () => {
-    const userId = await secureStorage.getItem('userId');
+  const initializeAuth = async (userId?: string | null) => {
+    if (!userId) {
+      userId = await secureStorage.getItem('userId');
+    }
+    
     if (userId) {
       try {
         // directly assign to avoid redundant local variable
         currentUser.value = await apiService.getUser(parseInt(userId));
       } catch (error) {
+        console.error('Auth initialization failed:', error);
         // If user not found or error, clear secure storage
         await secureStorage.removeItem('userId');
         await secureStorage.removeItem('privateKey');
@@ -71,5 +76,7 @@ export const useUserStore = defineStore('user', () => {
     register,
     logout,
     initializeAuth,
+    isAuthReady,
+    setAuthReady: (value: boolean) => { isAuthReady.value = value; },
   };
 });

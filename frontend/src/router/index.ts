@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useUserStore } from '../stores/userStore';
+import { secureStorage } from '../services/secureStorage';
 import Login from '../components/Login.vue';
 import Register from '../components/Register.vue';
 import Chat from '../components/Chat.vue';
@@ -44,9 +45,18 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore();
 
-  // Wait for auth initialization if not already done
-  if (!userStore.currentUser && localStorage.getItem('userId')) {
-    await userStore.initializeAuth();
+  try {
+    // Wait for auth initialization if not already done
+    if (!userStore.isAuthReady) {
+      const userId = await secureStorage.getItem('userId');
+      if (!userStore.currentUser && userId) {
+        await userStore.initializeAuth(userId);
+      }
+    }
+  } catch (error) {
+    console.error('Router auth check failed:', error);
+  } finally {
+    userStore.setAuthReady(true);
   }
 
   const isAuthenticated = userStore.isAuthenticated;
