@@ -1,40 +1,60 @@
 <template>
-  <div class="dashboard">
-    <header class="dashboard-header">
-      <h1>Welcome to MessageX</h1>
-      <button @click="logout" class="logout-button">Logout</button>
+  <div class="min-h-screen bg-zinc-950">
+    <header class="border-b border-white/5 bg-zinc-900/50 backdrop-blur-xl">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+        <h1 class="font-display text-xl font-bold text-white">Dashboard</h1>
+      </div>
     </header>
 
-    <main class="dashboard-content">
-      <div class="welcome-card">
-        <h2>Hello, {{ currentUser?.username }}!</h2>
-        <p>You are now logged into MessageX. This is a simple dashboard to get you started.</p>
-      </div>
+    <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <!-- Welcome Card -->
+        <div class="col-span-full rounded-2xl border border-white/5 bg-zinc-900/50 p-6 shadow-lg backdrop-blur-xl">
+          <h2 class="font-display text-2xl font-bold text-white">Hello, {{ currentUser?.username }}!</h2>
+          <p class="mt-2 text-zinc-400">You are now logged into MessageX. This is your personal dashboard.</p>
+        </div>
 
-      <div class="stats-card">
-        <h3>Platform Stats</h3>
-        <div class="stats">
-          <div class="stat">
-            <span class="stat-number">{{ users.length }}</span>
-            <span class="stat-label">Total Users</span>
-          </div>
-          <div class="stat">
-            <span class="stat-number">{{ currentUser?.id }}</span>
-            <span class="stat-label">Your ID</span>
+        <!-- Stats Card -->
+        <div class="rounded-2xl border border-white/5 bg-zinc-900/50 p-6 shadow-lg backdrop-blur-xl">
+          <h3 class="text-sm font-medium text-zinc-400">Platform Stats</h3>
+          <div class="mt-4 grid grid-cols-2 gap-4">
+            <div class="rounded-xl bg-white/5 p-4">
+              <span class="block text-2xl font-bold text-white">{{ users.length }}</span>
+              <span class="text-xs text-zinc-500">Total Users</span>
+            </div>
+            <div class="rounded-xl bg-white/5 p-4">
+              <span class="block text-2xl font-bold text-white">{{ currentUser?.id }}</span>
+              <span class="text-xs text-zinc-500">Your ID</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="users-list">
-        <h3>All Users</h3>
-        <div v-if="loading" class="loading">Loading users...</div>
-        <div v-else-if="users.length === 0" class="no-users">No users found</div>
-        <div v-else class="users-grid">
-          <div v-for="user in users" :key="user.id" class="user-card" @click="goToChat(user)">
-            <div class="user-avatar">{{ user.username.charAt(0).toUpperCase() }}</div>
-            <div class="user-info">
-              <h4>{{ user.username }}</h4>
-              <p>Joined {{ formatDate(user.created_at) }}</p>
+        <!-- Users List -->
+        <div class="col-span-full lg:col-span-2 rounded-2xl border border-white/5 bg-zinc-900/50 p-6 shadow-lg backdrop-blur-xl">
+          <h3 class="mb-4 text-sm font-medium text-zinc-400">All Users</h3>
+          
+          <div v-if="loading" class="flex justify-center py-8">
+            <div class="h-6 w-6 animate-spin rounded-full border-2 border-zinc-500 border-t-transparent"></div>
+          </div>
+          
+          <div v-else-if="users.length === 0" class="py-8 text-center text-zinc-500">
+            No users found
+          </div>
+          
+          <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div
+              v-for="user in users"
+              :key="user.id"
+              @click="goToChat(user)"
+              class="group flex cursor-pointer items-center gap-3 rounded-xl border border-white/5 bg-white/5 p-3 transition-all hover:border-indigo-500/30 hover:bg-white/10"
+            >
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-sm font-medium text-white shadow-lg shadow-indigo-500/20">
+                {{ user.username.charAt(0).toUpperCase() }}
+              </div>
+              <div>
+                <h4 class="text-sm font-medium text-zinc-200 group-hover:text-white">{{ user.username }}</h4>
+                <p class="text-xs text-zinc-500">Joined {{ formatDate(user.created_at) }}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -47,15 +67,15 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { apiService, type User } from '../services/api';
+import { useUserStore } from '../stores/userStore';
 
 const router = useRouter();
+const userStore = useUserStore(); // Added userStore usage
 const users = ref<User[]>([]);
 const loading = ref(false);
-const currentUser = ref<User | null>(null);
+const currentUser = ref<User | null>(userStore.currentUser); // Use store user
 
 onMounted(async () => {
-  // In a real app, you'd get the current user from session/token
-  // For now, we'll just load all users
   await loadUsers();
 });
 
@@ -74,172 +94,7 @@ const loadUsers = async () => {
   }
 };
 
-const logout = () => {
-  currentUser.value = null;
-  router.push('/login');
-};
-
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString();
 };
 </script>
-
-<style scoped>
-.dashboard {
-  min-height: 100vh;
-  background: #f5f7fa;
-}
-
-.dashboard-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 1rem 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.dashboard-header h1 {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-.logout-button {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.logout-button:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.dashboard-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.welcome-card, .stats-card {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-}
-
-.welcome-card h2 {
-  margin-top: 0;
-  color: #333;
-}
-
-.stats {
-  display: flex;
-  gap: 2rem;
-  margin-top: 1rem;
-}
-
-.stat {
-  text-align: center;
-}
-
-.stat-number {
-  display: block;
-  font-size: 2rem;
-  font-weight: bold;
-  color: #667eea;
-}
-
-.stat-label {
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.users-list {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-}
-
-.users-list h3 {
-  margin-top: 0;
-  color: #333;
-  margin-bottom: 1.5rem;
-}
-
-.loading, .no-users {
-  text-align: center;
-  color: #666;
-  padding: 2rem;
-}
-
-.users-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1rem;
-}
-
-.user-card {
-  background: white;
-  border-radius: 8px;
-  padding: 1rem;
-  display: flex;
-  align-items: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  transition: transform 0.2s, box-shadow 0.2s;
-  cursor: pointer;
-}
-
-.user-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.user-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 1.2rem;
-  margin-right: 1rem;
-}
-
-.user-info h4 {
-  margin: 0 0 0.25rem 0;
-  color: #333;
-}
-
-.user-info p {
-  margin: 0;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-@media (max-width: 768px) {
-  .dashboard-content {
-    padding: 1rem;
-  }
-
-  .stats {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .users-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

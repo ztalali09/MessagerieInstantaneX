@@ -1,60 +1,85 @@
 <template>
-  <div class="auth-container">
-    <div class="auth-card">
-      <h2>Join MessageX</h2>
-      <form @submit.prevent="handleRegister" class="auth-form">
-        <div class="form-group">
-          <label for="username">Username</label>
-          <input
-            id="username"
-            v-model="form.username"
-            type="text"
-            required
-            placeholder="Choose a username"
-            minlength="3"
-          />
-          <small class="form-hint">At least 3 characters</small>
+  <div class="flex min-h-screen items-center justify-center bg-zinc-950 p-4">
+    <div class="w-full max-w-md space-y-8 rounded-2xl border border-white/5 bg-zinc-900/50 p-8 shadow-2xl backdrop-blur-xl">
+      <div class="text-center">
+        <h2 class="font-display text-3xl font-bold tracking-tight text-white">Create an account</h2>
+        <p class="mt-2 text-sm text-zinc-400">Join MessageX today</p>
+      </div>
+
+      <form @submit.prevent="handleRegister" class="mt-8 space-y-6">
+        <div class="space-y-5">
+          <div>
+            <label for="username" class="block text-sm font-medium text-zinc-300">Username</label>
+            <div class="mt-2">
+              <input
+                id="username"
+                v-model="form.username"
+                type="text"
+                required
+                minlength="3"
+                class="block w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-zinc-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 sm:text-sm transition-all"
+                placeholder="Choose a username"
+              />
+              <p class="mt-1 text-xs text-zinc-500">At least 3 characters</p>
+            </div>
+          </div>
+
+          <div>
+            <label for="password" class="block text-sm font-medium text-zinc-300">Password</label>
+            <div class="mt-2">
+              <input
+                id="password"
+                v-model="form.password"
+                type="password"
+                required
+                minlength="6"
+                class="block w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-zinc-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 sm:text-sm transition-all"
+                placeholder="Create a password"
+              />
+              <p class="mt-1 text-xs text-zinc-500">At least 6 characters</p>
+            </div>
+          </div>
+
+          <div>
+            <label for="confirmPassword" class="block text-sm font-medium text-zinc-300">Confirm Password</label>
+            <div class="mt-2">
+              <input
+                id="confirmPassword"
+                v-model="confirmPassword"
+                type="password"
+                required
+                class="block w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-zinc-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 sm:text-sm transition-all"
+                placeholder="Confirm your password"
+              />
+            </div>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input
-            id="password"
-            v-model="form.password"
-            type="password"
-            required
-            placeholder="Create a password"
-            minlength="6"
-          />
-          <small class="form-hint">At least 6 characters</small>
-        </div>
-
-        <div class="form-group">
-          <label for="confirmPassword">Confirm Password</label>
-          <input
-            id="confirmPassword"
-            v-model="confirmPassword"
-            type="password"
-            required
-            placeholder="Confirm your password"
-          />
-        </div>
-
-        <button type="submit" :disabled="loading || !isFormValid" class="auth-button">
-          {{ loading ? 'Creating account...' : 'Register' }}
+        <button
+          type="submit"
+          :disabled="loading || !isFormValid"
+          class="flex w-full justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        >
+          <span v-if="loading" class="mr-2">
+            <svg class="h-5 w-5 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </span>
+          {{ loading ? 'Creating account...' : 'Create account' }}
         </button>
       </form>
 
-      <p class="auth-link">
+      <p class="text-center text-sm text-zinc-400">
         Already have an account?
-        <router-link to="/login">Login here</router-link>
+        <router-link to="/login" class="font-medium text-indigo-400 hover:text-indigo-300 transition-colors">Sign in</router-link>
       </p>
 
-      <div v-if="error" class="error-message">
+      <div v-if="error" class="rounded-lg bg-red-500/10 p-4 text-sm text-red-400 border border-red-500/20">
         {{ error }}
       </div>
 
-      <div v-if="success" class="success-message">
+      <div v-if="success" class="rounded-lg bg-emerald-500/10 p-4 text-sm text-emerald-400 border border-emerald-500/20">
         {{ success }}
       </div>
     </div>
@@ -109,122 +134,3 @@ const handleRegister = async () => {
   }
 };
 </script>
-
-<style scoped>
-.auth-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
-}
-
-.auth-card {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 400px;
-}
-
-.auth-card h2 {
-  text-align: center;
-  margin-bottom: 2rem;
-  color: #333;
-  font-size: 1.8rem;
-}
-
-.auth-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  font-weight: 500;
-  color: #555;
-}
-
-.form-group input {
-  padding: 0.75rem;
-  border: 2px solid #e1e5e9;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.3s ease;
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.form-hint {
-  color: #666;
-  font-size: 0.875rem;
-}
-
-.auth-button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  padding: 0.75rem;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.auth-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-}
-
-.auth-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.auth-link {
-  text-align: center;
-  margin-top: 1.5rem;
-  color: #666;
-}
-
-.auth-link a {
-  color: #667eea;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.auth-link a:hover {
-  text-decoration: underline;
-}
-
-.error-message {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background: #fee;
-  color: #c33;
-  border-radius: 6px;
-  text-align: center;
-  border: 1px solid #fcc;
-}
-
-.success-message {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background: #efe;
-  color: #363;
-  border-radius: 6px;
-  text-align: center;
-  border: 1px solid #cfc;
-}
-</style>

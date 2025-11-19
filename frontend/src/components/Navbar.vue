@@ -1,15 +1,26 @@
 <template>
-  <nav class="navbar">
-    <div class="navbar-container">
-      <div class="navbar-brand">
-        <router-link to="/" class="brand-link">MessageX</router-link>
+  <nav class="sticky top-0 z-50 w-full border-b border-white/5 bg-zinc-900/50 backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-900/50">
+    <div class="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center">
+        <router-link to="/" class="flex items-center gap-2 font-display text-lg font-bold tracking-tight text-white transition-opacity hover:opacity-80">
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/20">
+            <span class="text-sm">M</span>
+          </div>
+          MessageX
+        </router-link>
       </div>
 
-      <div v-if="isAuthenticated" class="navbar-user">
-        <div class="user-info">
-          <span class="username">{{ currentUser?.username }}</span>
-          <button @click="logout" class="logout-btn">Logout</button>
+      <div v-if="isAuthenticated" class="flex items-center gap-4">
+        <div class="flex items-center gap-3 rounded-full border border-white/5 bg-white/5 px-3 py-1.5 backdrop-blur-sm">
+          <div class="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
+          <span class="text-sm font-medium text-zinc-300">{{ currentUser?.username }}</span>
         </div>
+        <button 
+          @click="logout" 
+          class="group relative overflow-hidden rounded-lg bg-white/5 px-4 py-1.5 text-sm font-medium text-zinc-400 transition-all hover:bg-white/10 hover:text-white"
+        >
+          Logout
+        </button>
       </div>
     </div>
   </nav>
@@ -31,60 +42,3 @@ const logout = () => {
   router.push('/login');
 };
 </script>
-
-<style scoped>
-.navbar {
-  background: #fff;
-  border-bottom: 1px solid #e1e5e9;
-  padding: 0;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.navbar-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 60px;
-}
-
-.navbar-brand .brand-link {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #667eea;
-  text-decoration: none;
-}
-
-.navbar-user {
-  display: flex;
-  align-items: center;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.username {
-  font-weight: 500;
-  color: #333;
-}
-
-.logout-btn {
-  background: #dc3545;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  font-size: 0.875rem;
-  transition: background-color 0.2s;
-}
-
-.logout-btn:hover {
-  background: #c82333;
-}
-</style>
