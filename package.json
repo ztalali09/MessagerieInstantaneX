@@ -3,7 +3,10 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "build:frontend": "nx build frontend && npx cap sync"
+    "build:frontend": "nx build frontend && npx cap sync",
+    "dev:backend": "cd backend && DATABASE_URL='postgresql://postgres:password@localhost:5432/messagex?schema=public' PORT=3000 HOST=0.0.0.0 node dist/main.js",
+    "dev:frontend": "nx serve frontend",
+    "dev": "npm run dev:backend & npm run dev:frontend"
   },
   "private": true,
   "dependencies": {
