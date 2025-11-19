@@ -7,4 +7,10 @@ services:
     environment:
       - DATABASE_URL=postgres://postgres:XkxCOoQAkvZHBWxxyc7nlUWMKU3MFmv8HEct71RnZCpcLYEqzCxMIcrLgN4DEiUP@o0gwkcos0c0gccok0k4os08s:5432/postgres
       - PORT=3000
+    networks:
+      - coolify
     restart: unless-stopped
+
+networks:
+  coolify:
+    external: true
