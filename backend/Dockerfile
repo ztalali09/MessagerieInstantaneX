@@ -3,7 +3,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy configuration files
-COPY package*.json nx.json ./
+COPY package*.json nx.json tsconfig.base.json tsconfig.json ./
 COPY backend/package.json ./backend/
 
 # Install dependencies
