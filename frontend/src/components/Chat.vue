@@ -157,34 +157,68 @@
       
       <div v-if="selectedUser" class="border-t border-white/5 bg-zinc-900/30 p-3 md:p-4 backdrop-blur-xl">
         <form @submit.prevent="handleSendMessage" class="relative flex items-center gap-2">
+          <!-- Attachment Dropdown -->
+          <div class="relative">
+            <div
+              v-if="showAttachMenu"
+              class="absolute bottom-full left-0 mb-2 flex w-48 flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-900/90 p-1 backdrop-blur-xl shadow-xl"
+            >
+              <button
+                type="button"
+                @click="triggerFileUpload(); showAttachMenu = false"
+                class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-white/10 hover:text-white transition-colors text-left"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                </svg>
+                Image
+              </button>
+              <button
+                type="button"
+                @click="triggerVideoUpload(); showAttachMenu = false"
+                class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-white/10 hover:text-white transition-colors text-left"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
+                </svg>
+                Video
+              </button>
+              <button
+                type="button"
+                @click="triggerAudioUpload(); showAttachMenu = false"
+                class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-white/10 hover:text-white transition-colors text-left"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-4 w-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+                </svg>
+                Audio
+              </button>
+            </div>
+            
+            <button
+              type="button"
+              @click="showAttachMenu = !showAttachMenu"
+              class="rounded-md p-2 text-zinc-400 hover:bg-white/10 hover:text-indigo-400 transition-colors"
+              :class="{ 'text-indigo-400 bg-white/10': showAttachMenu }"
+              title="Attach file"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
+              </svg>
+            </button>
+          </div>
           <button
             type="button"
-            @click="triggerFileUpload"
-            class="rounded-md p-2 text-zinc-400 hover:bg-white/10 hover:text-indigo-400 transition-colors"
-            title="Send Image"
+            @click="isRecording ? stopRecording() : startRecording()"
+            class="rounded-md p-2 transition-colors"
+            :class="isRecording ? 'text-red-500 hover:bg-red-500/10 animate-pulse' : 'text-zinc-400 hover:bg-white/10 hover:text-indigo-400'"
+            :title="isRecording ? 'Stop Recording' : 'Record Audio'"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            @click="triggerVideoUpload"
-            class="rounded-md p-2 text-zinc-400 hover:bg-white/10 hover:text-indigo-400 transition-colors"
-            title="Send Video"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            @click="triggerAudioUpload"
-            class="rounded-md p-2 text-zinc-400 hover:bg-white/10 hover:text-indigo-400 transition-colors"
-            title="Send Audio"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+            <svg v-if="!isRecording" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+            </svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 0 1 7.5 5.25h9a2.25 2.25 0 0 1 2.25 2.25v9a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25v-9Z" />
             </svg>
           </button>
           <input
@@ -230,6 +264,10 @@ const typingTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const videoInput = ref<HTMLInputElement | null>(null);
 const audioInput = ref<HTMLInputElement | null>(null);
+const showAttachMenu = ref(false);
+const isRecording = ref(false);
+const mediaRecorder = ref<MediaRecorder | null>(null);
+const audioChunks = ref<Blob[]>([]);
 const aesImage = new AESImage();
 const aesVideo = new AESVideo();
 const aesAudio = new AESAudio();
@@ -425,13 +463,19 @@ async function handleVideoSelect(event: Event) {
 
 async function handleAudioSelect(event: Event) {
   const input = event.target as HTMLInputElement;
-  if (input.files && input.files.length > 0 && selectedUser.value) {
+  if (input.files && input.files.length > 0) {
     const file = input.files[0];
-    
+    await sendAudioFile(file);
+    input.value = '';
+  }
+}
+
+async function sendAudioFile(file: File) {
+    if (!selectedUser.value) return;
+
     // Check file size (50MB limit)
     if (file.size > 50 * 1024 * 1024) {
         alert('Audio file is too large. Max 50MB.');
-        input.value = '';
         return;
     }
     
@@ -455,9 +499,39 @@ async function handleAudioSelect(event: Event) {
     } catch (error) {
       console.error('Error sending audio:', error);
     }
-    
-    // Reset input
-    input.value = '';
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder.value = new MediaRecorder(stream);
+    audioChunks.value = [];
+
+    mediaRecorder.value.ondataavailable = (event) => {
+      audioChunks.value.push(event.data);
+    };
+
+    mediaRecorder.value.onstop = async () => {
+      const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' });
+      const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+      await sendAudioFile(audioFile);
+      
+      // Stop all tracks to release microphone
+      stream.getTracks().forEach(track => track.stop());
+    };
+
+    mediaRecorder.value.start();
+    isRecording.value = true;
+  } catch (error) {
+    console.error('Error accessing microphone:', error);
+    alert('Could not access microphone. Please ensure you have granted permission.');
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder.value && isRecording.value) {
+    mediaRecorder.value.stop();
+    isRecording.value = false;
   }
 }
 
