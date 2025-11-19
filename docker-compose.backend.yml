@@ -9,8 +9,8 @@ services:
       - PORT=3000
     networks:
       - coolify
-    expose:
-      - '3000'
+    ports:
+      - '3000:3000'
     restart: unless-stopped
 
 networks:
