@@ -33,6 +33,7 @@ export const initializeSocketIO = (httpServer: HttpServer) => {
       methods: ['GET', 'POST'],
       credentials: true,
     },
+    maxHttpBufferSize: 1e7, // 10MB
   });
 
   // Listen for new client connections
