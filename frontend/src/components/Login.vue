@@ -1,68 +1,70 @@
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-zinc-950 p-4">
-    <div class="w-full max-w-md space-y-8 rounded-2xl border border-white/5 bg-zinc-900/50 p-8 shadow-2xl backdrop-blur-xl">
+  <div class="flex h-full items-center justify-center p-4 md:p-4 overflow-y-auto">
+    <div class="w-full max-w-md space-y-5 md:space-y-8 p-6 md:p-8 matrix-terminal matrix-box-glow-strong matrix-fade-in relative z-10 my-4">
       <div class="text-center">
-        <h2 class="font-display text-3xl font-bold tracking-tight text-white">Welcome back</h2>
-        <p class="mt-2 text-sm text-zinc-400">Sign in to your account to continue</p>
+        <h2 class="text-xl md:text-3xl font-bold tracking-wider matrix-glow matrix-glitch uppercase" style="color: var(--matrix-bright);">&gt; THE_X_MESSENGER</h2>
+        <p class="mt-2 text-xs md:text-sm font-mono" style="color: var(--matrix-dim);">[SECURE_TERMINAL_ACCESS]</p>
       </div>
 
-      <form @submit.prevent="handleLogin" class="mt-8 space-y-6">
-        <div class="space-y-5">
+      <form @submit.prevent="handleLogin" class="mt-5 md:mt-8 space-y-4 md:space-y-6">
+        <div class="space-y-4 md:space-y-5">
           <div>
-            <label for="username" class="block text-sm font-medium text-zinc-300">Username</label>
-            <div class="mt-2">
-              <input
-                id="username"
-                v-model="form.username"
-                type="text"
-                required
-                class="block w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-zinc-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 sm:text-sm transition-all"
-                placeholder="Enter your username"
-              />
-            </div>
+            <label for="username" class="block text-xs md:text-sm font-bold text-green-500 font-mono uppercase mb-2">&gt; Username</label>
+            <input
+              id="username"
+              v-model="form.username"
+              type="text"
+              required
+              autocomplete="username"
+              class="matrix-input block w-full px-4 py-3 text-base"
+              style="font-size: 16px !important;"
+              placeholder="> ENTER_USERNAME"
+            />
           </div>
 
           <div>
-            <label for="password" class="block text-sm font-medium text-zinc-300">Password</label>
-            <div class="mt-2">
-              <input
-                id="password"
-                v-model="form.password"
-                type="password"
-                required
-                class="block w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-zinc-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 sm:text-sm transition-all"
-                placeholder="Enter your password"
-              />
-            </div>
+            <label for="password" class="block text-xs md:text-sm font-bold text-green-500 font-mono uppercase mb-2">&gt; Password</label>
+            <input
+              id="password"
+              v-model="form.password"
+              type="password"
+              required
+              autocomplete="current-password"
+              class="matrix-input block w-full px-4 py-3 text-base"
+              style="font-size: 16px !important;"
+              placeholder="> ENTER_PASSWORD"
+            />
           </div>
         </div>
 
         <button
           type="submit"
           :disabled="loading"
-          class="flex w-full justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          class="matrix-btn flex w-full justify-center items-center px-4 py-3.5 md:py-2.5 text-sm md:text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[48px]"
         >
           <span v-if="loading" class="mr-2">
-            <svg class="h-5 w-5 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg class="h-5 w-5 animate-spin text-green-500 matrix-glow-subtle" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
           </span>
-          {{ loading ? 'Signing in...' : 'Sign in' }}
+          {{ loading ? '[AUTHENTICATING...]' : '[LOGIN]' }}
         </button>
       </form>
 
-      <p class="text-center text-sm text-zinc-400">
-        Don't have an account?
-        <router-link to="/register" class="font-medium text-indigo-400 hover:text-indigo-300 transition-colors">Create an account</router-link>
+      <p class="text-center text-xs md:text-sm text-green-700 font-mono">
+        [NO_ACCOUNT?]
+        <router-link to="/register" class="font-bold text-green-500 active:text-green-400 md:hover:text-green-400 hover-matrix-glow ml-2 transition-all touch-manipulation inline-block py-1">
+          &gt; [REGISTER]
+        </router-link>
       </p>
 
-      <div v-if="error" class="rounded-lg bg-red-500/10 p-4 text-sm text-red-400 border border-red-500/20">
-        {{ error }}
+      <div v-if="error" class="border-2 border-red-500 bg-red-500/10 p-3 md:p-4 text-xs md:text-sm text-red-500 font-mono matrix-box-glow">
+        [ERROR] {{ error }}
       </div>
 
-      <div v-if="success" class="rounded-lg bg-emerald-500/10 p-4 text-sm text-emerald-400 border border-emerald-500/20">
-        {{ success }}
+      <div v-if="success" class="border-2 border-green-500 bg-green-500/10 p-3 md:p-4 text-xs md:text-sm text-green-500 font-mono matrix-box-glow">
+        [SUCCESS] {{ success }}
       </div>
     </div>
   </div>
@@ -72,9 +74,11 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '../stores/userStore';
+import { useToast } from '../composables/useToast';
 
 const router = useRouter();
 const userStore = useUserStore();
+const { success: showSuccess, error: showError } = useToast();
 
 const form = ref({
   username: '',
@@ -93,11 +97,13 @@ const handleLogin = async () => {
   try {
     const user = await userStore.login(form.value.username, form.value.password);
     success.value = `Welcome back, ${user.username}!`;
+    showSuccess('[ACCESS_GRANTED]', `Welcome, ${user.username}`);
     setTimeout(() => {
       router.push('/chat');
     }, 1500);
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Login failed';
+    showError('[ACCESS_DENIED]', err instanceof Error ? err.message : 'Login failed');
   } finally {
     loading.value = false;
   }
