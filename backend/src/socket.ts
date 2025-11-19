@@ -33,7 +33,7 @@ export const initializeSocketIO = (httpServer: HttpServer) => {
       methods: ['GET', 'POST'],
       credentials: true,
     },
-    maxHttpBufferSize: 1e7, // 10MB
+    maxHttpBufferSize: 50 * 1024 * 1024, // 50MB
   });
 
   // Listen for new client connections
@@ -186,10 +186,195 @@ export const initializeSocketIO = (httpServer: HttpServer) => {
           console.log(`❌ User ${data.to} not connected`);
         }
 
+        // Send back to sender
+        socket.emit('receive_message', messageDataForSender);
+
+      } catch (error) {
+        console.error('Error handling private message:', error);
+      }
+    });
+
+    /**
+     * Listen for a 'private-video-message' event
+     */
+    socket.on('private-video-message', async (data) => {
+      console.log(`🎥 Private video message received from ${data.from} to ${data.to}`);
+
+      try {
+        // Fetch receiver's and sender's public keys
+        const { getUserById } = await import('./models/users.js');
+        const toUser = await getUserById(parseInt(data.to));
+        const fromUser = await getUserById(parseInt(data.from));
+
+        if (!toUser || !toUser.publicKey) {
+          console.error('Receiver public key not found');
+          return;
+        }
+        if (!fromUser || !fromUser.publicKey) {
+          console.error('Sender public key not found');
+          return;
+        }
+
+        // The client sends the AES key used to encrypt the video
+        // We need to encrypt this AES key for both the receiver and the sender using their RSA public keys
+        
+        // Ensure data.key is in the correct format (Buffer)
+        let aesKeyBuffer: Buffer;
+        if (Buffer.isBuffer(data.key)) {
+            aesKeyBuffer = data.key;
+        } else if (typeof data.key === 'string') {
+            aesKeyBuffer = Buffer.from(data.key, 'base64');
+        } else {
+             // If it's an ArrayBuffer or similar from client
+             aesKeyBuffer = Buffer.from(data.key);
+        }
+
+        const { encryptWithPublicKey } = await import('./crypto/rsa.js');
+        
+        // Encrypt the AES key with receiver's RSA public key
+        const encryptedAESKeyForReceiver = encryptWithPublicKey(aesKeyBuffer.toString('base64'), toUser.publicKey);
+
+        // Encrypt the AES key with sender's RSA public key
+        const encryptedAESKeyForSender = encryptWithPublicKey(aesKeyBuffer.toString('base64'), fromUser.publicKey);
+
+        // Save encrypted message to database
+        // data.encryptedData is the encrypted video data (IV + Ciphertext)
+        const messageId = await saveMessage(
+            parseInt(data.from), 
+            parseInt(data.to), 
+            null, 
+            Buffer.isBuffer(data.encryptedData) ? data.encryptedData.toString('base64') : Buffer.from(data.encryptedData).toString('base64'),
+            encryptedAESKeyForReceiver, 
+            encryptedAESKeyForSender, 
+            'video'
+        );
+        console.log(`💾 Encrypted video saved to database with ID: ${messageId}`);
+
+        // Create message object for receiver
+        const messageDataForReceiver = {
+          id: messageId,
+          from_user_id: parseInt(data.from),
+          to_user_id: parseInt(data.to),
+          room: null,
+          message: data.encryptedData,
+          encryptedKey: encryptedAESKeyForReceiver,
+          messageType: 'video',
+          timestamp: new Date().toISOString(),
+          from_username: fromUser.username,
+          to_username: toUser.username,
+        };
+
+        // Create message object for sender (with sender's encrypted key)
+        const messageDataForSender = {
+          ...messageDataForReceiver,
+          encryptedKey: encryptedAESKeyForSender,
+        };
+
+        // Send to recipient
+        const recipientSocketId = getSocketIdByUserId(data.to);
+        if (recipientSocketId) {
+          io.to(recipientSocketId).emit('receive_message', messageDataForReceiver);
+          console.log(`📤 Encrypted private video and key sent to user ${data.to}`);
+        } else {
+          console.log(`❌ User ${data.to} not connected`);
+        }
+
         // Also send back to sender for confirmation (with sender's encrypted key)
         socket.emit('receive_message', messageDataForSender);
       } catch (error) {
-        console.error('Error encrypting and saving message:', error);
+        console.error('Error encrypting and saving video message:', error);
+      }
+    });
+
+    /**
+     * Listen for a 'private-audio-message' event
+     */
+    socket.on('private-audio-message', async (data) => {
+      console.log(`🎤 Private audio message received from ${data.from} to ${data.to}`);
+
+      try {
+        // Fetch receiver's and sender's public keys
+        const { getUserById } = await import('./models/users.js');
+        const toUser = await getUserById(parseInt(data.to));
+        const fromUser = await getUserById(parseInt(data.from));
+
+        if (!toUser || !toUser.publicKey) {
+          console.error('Receiver public key not found');
+          return;
+        }
+        if (!fromUser || !fromUser.publicKey) {
+          console.error('Sender public key not found');
+          return;
+        }
+
+        // The client sends the AES key used to encrypt the audio
+        // We need to encrypt this AES key for both the receiver and the sender using their RSA public keys
+        
+        // Ensure data.key is in the correct format (Buffer)
+        let aesKeyBuffer: Buffer;
+        if (Buffer.isBuffer(data.key)) {
+            aesKeyBuffer = data.key;
+        } else if (typeof data.key === 'string') {
+            aesKeyBuffer = Buffer.from(data.key, 'base64');
+        } else {
+             // If it's an ArrayBuffer or similar from client
+             aesKeyBuffer = Buffer.from(data.key);
+        }
+
+        const { encryptWithPublicKey } = await import('./crypto/rsa.js');
+        
+        // Encrypt the AES key with receiver's RSA public key
+        const encryptedAESKeyForReceiver = encryptWithPublicKey(aesKeyBuffer.toString('base64'), toUser.publicKey);
+
+        // Encrypt the AES key with sender's RSA public key
+        const encryptedAESKeyForSender = encryptWithPublicKey(aesKeyBuffer.toString('base64'), fromUser.publicKey);
+
+        // Save encrypted message to database
+        // data.encryptedData is the encrypted audio data (IV + Ciphertext)
+        const messageId = await saveMessage(
+            parseInt(data.from), 
+            parseInt(data.to), 
+            null, 
+            Buffer.isBuffer(data.encryptedData) ? data.encryptedData.toString('base64') : Buffer.from(data.encryptedData).toString('base64'),
+            encryptedAESKeyForReceiver, 
+            encryptedAESKeyForSender, 
+            'audio'
+        );
+        console.log(`💾 Encrypted audio saved to database with ID: ${messageId}`);
+
+        // Create message object for receiver
+        const messageDataForReceiver = {
+          id: messageId,
+          from_user_id: parseInt(data.from),
+          to_user_id: parseInt(data.to),
+          room: null,
+          message: data.encryptedData,
+          encryptedKey: encryptedAESKeyForReceiver,
+          messageType: 'audio',
+          timestamp: new Date().toISOString(),
+          from_username: fromUser.username,
+          to_username: toUser.username,
+        };
+
+        // Create message object for sender (with sender's encrypted key)
+        const messageDataForSender = {
+          ...messageDataForReceiver,
+          encryptedKey: encryptedAESKeyForSender,
+        };
+
+        // Send to recipient
+        const recipientSocketId = getSocketIdByUserId(data.to);
+        if (recipientSocketId) {
+          io.to(recipientSocketId).emit('receive_message', messageDataForReceiver);
+          console.log(`📤 Encrypted private audio and key sent to user ${data.to}`);
+        } else {
+          console.log(`❌ User ${data.to} not connected`);
+        }
+
+        // Also send back to sender for confirmation (with sender's encrypted key)
+        socket.emit('receive_message', messageDataForSender);
+      } catch (error) {
+        console.error('Error encrypting and saving audio message:', error);
       }
     });
 

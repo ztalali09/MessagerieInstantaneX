@@ -85,6 +85,24 @@
                    Decrypting image...
                  </div>
               </template>
+              <template v-else-if="msg.messageType === 'video'">
+                 <div v-if="msg.decryptedVideo" class="relative group">
+                    <video :src="msg.decryptedVideo" controls class="max-w-full rounded-lg"></video>
+                 </div>
+                 <div v-else class="flex items-center gap-2 text-xs italic opacity-70">
+                   <div class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                   Decrypting video...
+                 </div>
+              </template>
+              <template v-else-if="msg.messageType === 'audio'">
+                 <div v-if="msg.decryptedAudio" class="relative group">
+                    <audio :src="msg.decryptedAudio" controls class="w-full min-w-[200px]"></audio>
+                 </div>
+                 <div v-else class="flex items-center gap-2 text-xs italic opacity-70">
+                   <div class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                   Decrypting audio...
+                 </div>
+              </template>
               <template v-else>
                 {{ msg.message }}
               </template>
@@ -119,6 +137,24 @@
         @change="handleFileSelect"
       />
       
+      <!-- Video Upload Input (Hidden) -->
+      <input
+        type="file"
+        ref="videoInput"
+        accept="video/*"
+        class="hidden"
+        @change="handleVideoSelect"
+      />
+      
+      <!-- Audio Upload Input (Hidden) -->
+      <input
+        type="file"
+        ref="audioInput"
+        accept="audio/*"
+        class="hidden"
+        @change="handleAudioSelect"
+      />
+      
       <div v-if="selectedUser" class="border-t border-white/5 bg-zinc-900/30 p-3 md:p-4 backdrop-blur-xl">
         <form @submit.prevent="handleSendMessage" class="relative flex items-center gap-2">
           <button
@@ -129,6 +165,26 @@
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
               <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            @click="triggerVideoUpload"
+            class="rounded-md p-2 text-zinc-400 hover:bg-white/10 hover:text-indigo-400 transition-colors"
+            title="Send Video"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            @click="triggerAudioUpload"
+            class="rounded-md p-2 text-zinc-400 hover:bg-white/10 hover:text-indigo-400 transition-colors"
+            title="Send Audio"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
             </svg>
           </button>
           <input
@@ -160,6 +216,8 @@ import { apiService, type User } from '../services/api';
 import { useSocket } from '../services/useSocket';
 import { useUserStore } from '../stores/userStore';
 import { AESImage } from '../crypto/AESImage';
+import { AESVideo } from '../crypto/AESVideo';
+import { AESAudio } from '../crypto/AESAudio';
 import { secureStorage } from '../services/secureStorage';
 
 const userStore = useUserStore();
@@ -170,7 +228,11 @@ const messageText = ref('');
 const currentUserId = userStore.currentUser?.id.toString() || '';
 const typingTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
+const videoInput = ref<HTMLInputElement | null>(null);
+const audioInput = ref<HTMLInputElement | null>(null);
 const aesImage = new AESImage();
+const aesVideo = new AESVideo();
+const aesAudio = new AESAudio();
 
 const { messages, onlineUsers, typingUsers, sendMessage, startTyping, stopTyping, socket } = useSocket();
 
@@ -182,13 +244,25 @@ const conversationMessages = computed(() => {
       (m.to_user_id == currentUserId && m.from_user_id == selectedUser.value?.id)
   );
   
-  // Trigger decryption for images if not already done
+  // Trigger decryption for images/videos/audios if not already done
   filtered.forEach(async (msg) => {
     if (msg.messageType === 'image' && !msg.decryptedImage && msg.encryptedKey) {
         try {
              await decryptImageMessage(msg);
         } catch (e) {
             console.error('Failed to decrypt image', e);
+        }
+    } else if (msg.messageType === 'video' && !msg.decryptedVideo && msg.encryptedKey) {
+        try {
+             await decryptVideoMessage(msg);
+        } catch (e) {
+            console.error('Failed to decrypt video', e);
+        }
+    } else if (msg.messageType === 'audio' && !msg.decryptedAudio && msg.encryptedKey) {
+        try {
+             await decryptAudioMessage(msg);
+        } catch (e) {
+            console.error('Failed to decrypt audio', e);
         }
     }
   });
@@ -273,6 +347,14 @@ function triggerFileUpload() {
   fileInput.value?.click();
 }
 
+function triggerVideoUpload() {
+  videoInput.value?.click();
+}
+
+function triggerAudioUpload() {
+  audioInput.value?.click();
+}
+
 async function handleFileSelect(event: Event) {
   const input = event.target as HTMLInputElement;
   if (input.files && input.files.length > 0 && selectedUser.value) {
@@ -286,8 +368,6 @@ async function handleFileSelect(event: Event) {
       const rawKey = await aesImage.exportKey(key);
       
       // 3. Emit to server
-      // We need to send the encrypted data and the key
-      // The server will encrypt the key for the recipient
       socket.value.emit('private-image-message', {
         from: currentUserId,
         to: selectedUser.value.id.toString(),
@@ -305,15 +385,87 @@ async function handleFileSelect(event: Event) {
   }
 }
 
+async function handleVideoSelect(event: Event) {
+  const input = event.target as HTMLInputElement;
+  if (input.files && input.files.length > 0 && selectedUser.value) {
+    const file = input.files[0];
+    
+    // Check file size (50MB limit)
+    if (file.size > 50 * 1024 * 1024) {
+        alert('Video file is too large. Max 50MB.');
+        input.value = '';
+        return;
+    }
+    
+    try {
+      console.log('🎥 Encrypting video...');
+      // 1. Encrypt the video
+      const { encryptedData, key } = await aesVideo.encryptFile(file);
+      
+      // 2. Export the key to send it
+      const rawKey = await aesVideo.exportKey(key);
+      
+      // 3. Emit to server
+      socket.value.emit('private-video-message', {
+        from: currentUserId,
+        to: selectedUser.value.id.toString(),
+        encryptedData: encryptedData, // ArrayBuffer
+        key: rawKey // ArrayBuffer
+      });
+      
+      console.log('📤 Sent encrypted video');
+    } catch (error) {
+      console.error('Error sending video:', error);
+    }
+    
+    // Reset input
+    input.value = '';
+  }
+}
+
+async function handleAudioSelect(event: Event) {
+  const input = event.target as HTMLInputElement;
+  if (input.files && input.files.length > 0 && selectedUser.value) {
+    const file = input.files[0];
+    
+    // Check file size (50MB limit)
+    if (file.size > 50 * 1024 * 1024) {
+        alert('Audio file is too large. Max 50MB.');
+        input.value = '';
+        return;
+    }
+    
+    try {
+      console.log('🎤 Encrypting audio...');
+      // 1. Encrypt the audio
+      const { encryptedData, key } = await aesAudio.encryptFile(file);
+      
+      // 2. Export the key to send it
+      const rawKey = await aesAudio.exportKey(key);
+      
+      // 3. Emit to server
+      socket.value.emit('private-audio-message', {
+        from: currentUserId,
+        to: selectedUser.value.id.toString(),
+        encryptedData: encryptedData, // ArrayBuffer
+        key: rawKey // ArrayBuffer
+      });
+      
+      console.log('📤 Sent encrypted audio');
+    } catch (error) {
+      console.error('Error sending audio:', error);
+    }
+    
+    // Reset input
+    input.value = '';
+  }
+}
+
 async function decryptImageMessage(msg: any) {
     if (msg.decryptedImage) return;
     
     try {
-        // We need the user's private key to decrypt the AES key
-
         const { decryptWithPrivateKey } = await import('../crypto/rsa');
-        
-        // Get encrypted private key from storage
         const privateKeyPem = await secureStorage.getItem('privateKey');
         
         if (!privateKeyPem) {
@@ -321,11 +473,7 @@ async function decryptImageMessage(msg: any) {
             return;
         }
         
-        // 1. Decrypt the AES Key for this message
-        // msg.encryptedKey is the AES key encrypted with our RSA Public Key
         const aesKeyBase64 = await decryptWithPrivateKey(msg.encryptedKey, privateKeyPem);
-        
-        // Import the AES key
         const keyBuffer = Uint8Array.from(atob(aesKeyBase64), c => c.charCodeAt(0));
         const messageKey = await window.crypto.subtle.importKey(
             'raw',
@@ -335,19 +483,11 @@ async function decryptImageMessage(msg: any) {
             ['decrypt']
         );
         
-        // 2. Decrypt the Image Data
-        // msg.message is the encrypted image data (IV + Ciphertext)
-        // It might be base64 encoded if it came from JSON
         let encryptedBytes: ArrayBuffer;
         if (typeof msg.message === 'string') {
-             // Convert base64 to buffer
-             // Check if it's just base64 or has some other format. 
-             // Backend saves it as Buffer, so over JSON it comes as Buffer object or Base64 string depending on socket.io config
-             // Usually socket.io handles Buffers well, but let's be safe.
              if ((msg.message as any).type === 'Buffer') {
                  encryptedBytes = new Uint8Array((msg.message as any).data).buffer;
              } else {
-                 // Try base64
                  const binaryString = atob(msg.message);
                  const bytes = new Uint8Array(binaryString.length);
                  for (let i = 0; i < binaryString.length; i++) {
@@ -364,6 +504,98 @@ async function decryptImageMessage(msg: any) {
         
     } catch (error) {
         console.error('Error decrypting image:', error);
+    }
+}
+
+async function decryptVideoMessage(msg: any) {
+    if (msg.decryptedVideo) return;
+    
+    try {
+        const { decryptWithPrivateKey } = await import('../crypto/rsa');
+        const privateKeyPem = await secureStorage.getItem('privateKey');
+        
+        if (!privateKeyPem) {
+            console.warn('Cannot decrypt video: missing private key');
+            return;
+        }
+        
+        const aesKeyBase64 = await decryptWithPrivateKey(msg.encryptedKey, privateKeyPem);
+        const keyBuffer = Uint8Array.from(atob(aesKeyBase64), c => c.charCodeAt(0));
+        const messageKey = await window.crypto.subtle.importKey(
+            'raw',
+            keyBuffer,
+            { name: 'AES-CBC' },
+            false,
+            ['decrypt']
+        );
+        
+        let encryptedBytes: ArrayBuffer;
+        if (typeof msg.message === 'string') {
+             if ((msg.message as any).type === 'Buffer') {
+                 encryptedBytes = new Uint8Array((msg.message as any).data).buffer;
+             } else {
+                 const binaryString = atob(msg.message);
+                 const bytes = new Uint8Array(binaryString.length);
+                 for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                 }
+                 encryptedBytes = bytes.buffer;
+             }
+        } else {
+            encryptedBytes = msg.message;
+        }
+        
+        const videoBlob = await aesVideo.decryptFile(encryptedBytes, messageKey);
+        msg.decryptedVideo = URL.createObjectURL(videoBlob);
+        
+    } catch (error) {
+        console.error('Error decrypting video:', error);
+    }
+}
+
+async function decryptAudioMessage(msg: any) {
+    if (msg.decryptedAudio) return;
+    
+    try {
+        const { decryptWithPrivateKey } = await import('../crypto/rsa');
+        const privateKeyPem = await secureStorage.getItem('privateKey');
+        
+        if (!privateKeyPem) {
+            console.warn('Cannot decrypt audio: missing private key');
+            return;
+        }
+        
+        const aesKeyBase64 = await decryptWithPrivateKey(msg.encryptedKey, privateKeyPem);
+        const keyBuffer = Uint8Array.from(atob(aesKeyBase64), c => c.charCodeAt(0));
+        const messageKey = await window.crypto.subtle.importKey(
+            'raw',
+            keyBuffer,
+            { name: 'AES-CBC' },
+            false,
+            ['decrypt']
+        );
+        
+        let encryptedBytes: ArrayBuffer;
+        if (typeof msg.message === 'string') {
+             if ((msg.message as any).type === 'Buffer') {
+                 encryptedBytes = new Uint8Array((msg.message as any).data).buffer;
+             } else {
+                 const binaryString = atob(msg.message);
+                 const bytes = new Uint8Array(binaryString.length);
+                 for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                 }
+                 encryptedBytes = bytes.buffer;
+             }
+        } else {
+            encryptedBytes = msg.message;
+        }
+        
+        const audioBlob = await aesAudio.decryptFile(encryptedBytes, messageKey);
+        msg.decryptedAudio = URL.createObjectURL(audioBlob);
+        
+    } catch (error) {
+        console.error('Error decrypting audio:', error);
     }
 }
 
