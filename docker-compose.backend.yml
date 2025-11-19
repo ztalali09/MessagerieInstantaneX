@@ -5,7 +5,7 @@ services:
       dockerfile: backend/Dockerfile
     container_name: messagex-backend
     environment:
-      - DATABASE_URL=postgres://messagex:qG2FWx1IiQISK8ISr3gnXN6gm8UUGEXSxzu9FwVJSci2dBAA7duD6wpjznpCGPPG@escko8wkksgkcg0okc488wcs:5432/messagex
+      - DATABASE_URL=postgres://postgres:XkxCOoQAkvZHBWxxyc7nlUWMKU3MFmv8HEct71RnZCpcLYEqzCxMIcrLgN4DEiUP@o0gwkcos0c0gccok0k4os08s:5432/postgres
       - PORT=3000
     ports:
       - '3000:3000'
