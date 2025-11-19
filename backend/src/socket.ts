@@ -193,6 +193,106 @@ export const initializeSocketIO = (httpServer: HttpServer) => {
     });
 
     /**
+     * Listen for a 'private-image-message' event
+     */
+    socket.on('private-image-message', async (data) => {
+      console.log(`🖼️ Private image message received from ${data.from} to ${data.to}`);
+
+      try {
+        // Fetch receiver's and sender's public keys
+        const { getUserById } = await import('./models/users.js');
+        const toUser = await getUserById(parseInt(data.to));
+        const fromUser = await getUserById(parseInt(data.from));
+
+        if (!toUser || !toUser.publicKey) {
+          console.error('Receiver public key not found');
+          return;
+        }
+        if (!fromUser || !fromUser.publicKey) {
+          console.error('Sender public key not found');
+          return;
+        }
+
+        // The client sends the AES key used to encrypt the image
+        // We need to encrypt this AES key for both the receiver and the sender using their RSA public keys
+        // data.key should be the raw AES key (or base64 encoded)
+        
+        // Ensure data.key is in the correct format (Buffer)
+        let aesKeyBuffer: Buffer;
+        if (Buffer.isBuffer(data.key)) {
+            aesKeyBuffer = data.key;
+        } else if (typeof data.key === 'string') {
+            aesKeyBuffer = Buffer.from(data.key, 'base64');
+        } else {
+             // If it's an ArrayBuffer or similar from client
+             aesKeyBuffer = Buffer.from(data.key);
+        }
+
+        const { encryptWithPublicKey } = await import('./crypto/rsa.js');
+        
+        // Encrypt the AES key with receiver's RSA public key
+        const encryptedAESKeyForReceiver = encryptWithPublicKey(aesKeyBuffer.toString('base64'), toUser.publicKey);
+
+        // Encrypt the AES key with sender's RSA public key
+        const encryptedAESKeyForSender = encryptWithPublicKey(aesKeyBuffer.toString('base64'), fromUser.publicKey);
+
+        // Save encrypted message to database
+        // data.encryptedData is the encrypted image data (IV + Ciphertext)
+        const messageId = await saveMessage(
+            parseInt(data.from), 
+            parseInt(data.to), 
+            null, 
+            Buffer.isBuffer(data.encryptedData) ? data.encryptedData.toString('base64') : Buffer.from(data.encryptedData).toString('base64'),
+            encryptedAESKeyForReceiver, 
+            encryptedAESKeyForSender, 
+            'image'
+        );
+        console.log(`💾 Encrypted image saved to database with ID: ${messageId}`);
+
+        // Create message object for receiver
+        const messageDataForReceiver = {
+          id: messageId,
+          from_user_id: parseInt(data.from),
+          to_user_id: parseInt(data.to),
+          room: null,
+          message: data.encryptedData,
+          encryptedKey: encryptedAESKeyForReceiver,
+          messageType: 'image',
+          timestamp: new Date().toISOString(),
+          from_username: fromUser?.username || 'Unknown',
+          to_username: toUser?.username || 'Unknown'
+        };
+
+        // Create message object for sender
+        const messageDataForSender = {
+          id: messageId,
+          from_user_id: parseInt(data.from),
+          to_user_id: parseInt(data.to),
+          room: null,
+          message: data.encryptedData,
+          encryptedKey: encryptedAESKeyForSender,
+          messageType: 'image',
+          timestamp: new Date().toISOString(),
+          from_username: fromUser?.username || 'Unknown',
+          to_username: toUser?.username || 'Unknown'
+        };
+
+        // Send to recipient
+        const recipientSocketId = getSocketIdByUserId(data.to);
+        if (recipientSocketId) {
+          io.to(recipientSocketId).emit('receive_message', messageDataForReceiver);
+          console.log(`📤 Encrypted image sent to user ${data.to}`);
+        }
+
+        // Send back to sender
+        socket.emit('receive_message', messageDataForSender);
+
+      } catch (error) {
+        console.error('Error handling private image message:', error);
+      }
+    });
+
+    /**
      * Listen for a 'leave_room' event
      * @param {string} room - The ID of the chat room to leave
      */

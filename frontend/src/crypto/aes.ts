@@ -48,7 +48,7 @@ export const decryptPrivateKey = async (
   const decryptedBuffer = await crypto.subtle.decrypt(
     { name: 'AES-CBC', iv },
     aesKey,
-    encryptedData
+    encryptedData as any
   );
 
   const decoder = new TextDecoder();
@@ -86,9 +86,68 @@ export const decryptMessage = async (
   const decryptedBuffer = await crypto.subtle.decrypt(
     { name: 'AES-CBC', iv },
     cryptoKey,
-    encryptedData
+    encryptedData as any
   );
 
   const decoder = new TextDecoder();
   return decoder.decode(decryptedBuffer);
+};
+
+// Déchiffrer un message (retourne un ArrayBuffer)
+export const decryptMessageBuffer = async (
+  encryptedMessage: string | ArrayBuffer | Uint8Array,
+  key: CryptoKey | BufferSource
+): Promise<ArrayBuffer> => {
+  let iv: Uint8Array;
+  let encryptedData: Uint8Array;
+
+  if (typeof encryptedMessage === 'string') {
+      // Assume format "base64IV:base64Ciphertext" or raw base64
+      if (encryptedMessage.includes(':')) {
+        const parts = encryptedMessage.split(':');
+        if (parts.length !== 2) throw new Error('Invalid encrypted message format');
+        iv = Uint8Array.from(atob(parts[0]), (c) => c.charCodeAt(0));
+        encryptedData = Uint8Array.from(atob(parts[1]), (c) => c.charCodeAt(0));
+      } else {
+          // Try to decode as base64 if it's a string but no colon
+          // This might be the case if the server sends the raw buffer as a base64 string
+          const binaryString = atob(encryptedMessage);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          // Assuming first 16 bytes are IV
+          iv = bytes.slice(0, 16);
+          encryptedData = bytes.slice(16);
+      }
+  } else {
+      // It's already a buffer (ArrayBuffer or Uint8Array)
+      const bytes = new Uint8Array(encryptedMessage);
+      iv = bytes.slice(0, 16);
+      encryptedData = bytes.slice(16);
+  }
+
+  // Type guards
+  const isCryptoKey = (k: any): k is CryptoKey =>
+    k && typeof k === 'object' && 'algorithm' in k;
+
+  // If a raw key (BufferSource) is provided, import it into a CryptoKey
+  let cryptoKey: CryptoKey;
+  if (isCryptoKey(key)) {
+    cryptoKey = key as CryptoKey;
+  } else {
+    cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      key as BufferSource,
+      { name: 'AES-CBC' },
+      false,
+      ['decrypt']
+    );
+  }
+
+  return await crypto.subtle.decrypt(
+    { name: 'AES-CBC', iv },
+    cryptoKey,
+    encryptedData as any
+  );
 };

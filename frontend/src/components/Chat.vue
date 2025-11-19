@@ -76,7 +76,18 @@
                 ? 'bg-indigo-600 text-white rounded-br-sm' 
                 : 'bg-zinc-800 text-zinc-200 rounded-bl-sm'"
             >
-              {{ msg.message }}
+              <template v-if="msg.messageType === 'image'">
+                 <div v-if="msg.decryptedImage" class="relative group cursor-pointer">
+                    <img :src="msg.decryptedImage" alt="Encrypted Image" class="max-w-full rounded-lg" @click="openImage(msg.decryptedImage)" />
+                 </div>
+                 <div v-else class="flex items-center gap-2 text-xs italic opacity-70">
+                   <div class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                   Decrypting image...
+                 </div>
+              </template>
+              <template v-else>
+                {{ msg.message }}
+              </template>
             </div>
             <span class="mt-1 text-[10px] text-zinc-600">
               {{ formatTimestamp(msg.timestamp) }}
@@ -97,8 +108,29 @@
         </div>
       </div>
 
+
+      
+      <!-- Image Upload Input (Hidden) -->
+      <input
+        type="file"
+        ref="fileInput"
+        accept="image/*"
+        class="hidden"
+        @change="handleFileSelect"
+      />
+      
       <div v-if="selectedUser" class="border-t border-white/5 bg-zinc-900/30 p-3 md:p-4 backdrop-blur-xl">
         <form @submit.prevent="handleSendMessage" class="relative flex items-center gap-2">
+          <button
+            type="button"
+            @click="triggerFileUpload"
+            class="rounded-md p-2 text-zinc-400 hover:bg-white/10 hover:text-indigo-400 transition-colors"
+            title="Send Image"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+            </svg>
+          </button>
           <input
             v-model="messageText"
             type="text"
@@ -127,6 +159,8 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { apiService, type User } from '../services/api';
 import { useSocket } from '../services/useSocket';
 import { useUserStore } from '../stores/userStore';
+import { AESImage } from '../crypto/AESImage';
+import { secureStorage } from '../services/secureStorage';
 
 const userStore = useUserStore();
 const users = ref<User[]>([]);
@@ -135,8 +169,10 @@ const selectedUser = ref<User | null>(null);
 const messageText = ref('');
 const currentUserId = userStore.currentUser?.id.toString() || '';
 const typingTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
+const fileInput = ref<HTMLInputElement | null>(null);
+const aesImage = new AESImage();
 
-const { messages, onlineUsers, typingUsers, sendMessage, startTyping, stopTyping } = useSocket();
+const { messages, onlineUsers, typingUsers, sendMessage, startTyping, stopTyping, socket } = useSocket();
 
 const conversationMessages = computed(() => {
   if (!selectedUser.value) return [];
@@ -145,6 +181,18 @@ const conversationMessages = computed(() => {
       (m.from_user_id == currentUserId && m.to_user_id == selectedUser.value?.id) ||
       (m.to_user_id == currentUserId && m.from_user_id == selectedUser.value?.id)
   );
+  
+  // Trigger decryption for images if not already done
+  filtered.forEach(async (msg) => {
+    if (msg.messageType === 'image' && !msg.decryptedImage && msg.encryptedKey) {
+        try {
+             await decryptImageMessage(msg);
+        } catch (e) {
+            console.error('Failed to decrypt image', e);
+        }
+    }
+  });
+
   return filtered.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 });
 
@@ -219,6 +267,108 @@ function formatTimestamp(ts: string) {
     .getMinutes()
     .toString()
     .padStart(2, '0')}`;
+}
+
+function triggerFileUpload() {
+  fileInput.value?.click();
+}
+
+async function handleFileSelect(event: Event) {
+  const input = event.target as HTMLInputElement;
+  if (input.files && input.files.length > 0 && selectedUser.value) {
+    const file = input.files[0];
+    
+    try {
+      // 1. Encrypt the image
+      const { encryptedData, key } = await aesImage.encryptFile(file);
+      
+      // 2. Export the key to send it
+      const rawKey = await aesImage.exportKey(key);
+      
+      // 3. Emit to server
+      // We need to send the encrypted data and the key
+      // The server will encrypt the key for the recipient
+      socket.value.emit('private-image-message', {
+        from: currentUserId,
+        to: selectedUser.value.id.toString(),
+        encryptedData: encryptedData, // ArrayBuffer
+        key: rawKey // ArrayBuffer
+      });
+      
+      console.log('📤 Sent encrypted image');
+    } catch (error) {
+      console.error('Error sending image:', error);
+    }
+    
+    // Reset input
+    input.value = '';
+  }
+}
+
+async function decryptImageMessage(msg: any) {
+    if (msg.decryptedImage) return;
+    
+    try {
+        // We need the user's private key to decrypt the AES key
+
+        const { decryptWithPrivateKey } = await import('../crypto/rsa');
+        
+        // Get encrypted private key from storage
+        const privateKeyPem = await secureStorage.getItem('privateKey');
+        
+        if (!privateKeyPem) {
+            console.warn('Cannot decrypt image: missing private key');
+            return;
+        }
+        
+        // 1. Decrypt the AES Key for this message
+        // msg.encryptedKey is the AES key encrypted with our RSA Public Key
+        const aesKeyBase64 = await decryptWithPrivateKey(msg.encryptedKey, privateKeyPem);
+        
+        // Import the AES key
+        const keyBuffer = Uint8Array.from(atob(aesKeyBase64), c => c.charCodeAt(0));
+        const messageKey = await window.crypto.subtle.importKey(
+            'raw',
+            keyBuffer,
+            { name: 'AES-CBC' },
+            false,
+            ['decrypt']
+        );
+        
+        // 2. Decrypt the Image Data
+        // msg.message is the encrypted image data (IV + Ciphertext)
+        // It might be base64 encoded if it came from JSON
+        let encryptedBytes: ArrayBuffer;
+        if (typeof msg.message === 'string') {
+             // Convert base64 to buffer
+             // Check if it's just base64 or has some other format. 
+             // Backend saves it as Buffer, so over JSON it comes as Buffer object or Base64 string depending on socket.io config
+             // Usually socket.io handles Buffers well, but let's be safe.
+             if ((msg.message as any).type === 'Buffer') {
+                 encryptedBytes = new Uint8Array((msg.message as any).data).buffer;
+             } else {
+                 // Try base64
+                 const binaryString = atob(msg.message);
+                 const bytes = new Uint8Array(binaryString.length);
+                 for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                 }
+                 encryptedBytes = bytes.buffer;
+             }
+        } else {
+            encryptedBytes = msg.message;
+        }
+        
+        const imageBlob = await aesImage.decryptFile(encryptedBytes, messageKey);
+        msg.decryptedImage = URL.createObjectURL(imageBlob);
+        
+    } catch (error) {
+        console.error('Error decrypting image:', error);
+    }
+}
+
+function openImage(url: string) {
+    window.open(url, '_blank');
 }
 
 onMounted(loadUsers);
