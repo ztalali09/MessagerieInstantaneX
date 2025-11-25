@@ -512,7 +512,8 @@ export const initializeSocketIO = (httpServer: HttpServer) => {
     socket.on('disconnect', () => {
       console.log(`👋 User disconnected: ${socket.id}`);
       // Remove user from connected users map
-      for (const [userId, socketId] of connectedUsers.entries()) {
+      const entries = Array.from(connectedUsers.entries());
+      for (const [userId, socketId] of entries) {
         if (socketId === socket.id) {
           connectedUsers.delete(userId);
           console.log(`🗑️ Removed user ${userId} from connected users`);

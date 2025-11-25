@@ -3,12 +3,13 @@ import { useUserStore } from '../stores/userStore';
 import { secureStorage } from '../services/secureStorage';
 import Login from '../components/Login.vue';
 import Register from '../components/Register.vue';
-import Chat from '../components/Chat.vue';
+import ChatEnhanced from '../components/ChatEnhanced.vue';
+import ChatBubbleTest from '../components/ChatBubbleTest.vue';
 
 const routes = [
   {
     path: '/',
-    redirect: '/login'
+    redirect: '/chat'
   },
   {
     path: '/login',
@@ -23,16 +24,16 @@ const routes = [
     meta: { requiresAuth: false }
   },
   {
-    path: '/dashboard',
-    name: 'Dashboard',
-    component: () => import('../components/Dashboard.vue'),
+    path: '/chat',
+    name: 'Chat',
+    component: ChatEnhanced,
     meta: { requiresAuth: true }
   },
   {
-    path: '/chat',
-    name: 'Chat',
-    component: Chat,
-    meta: { requiresAuth: true }
+    path: '/test-bubbles',
+    name: 'ChatBubbleTest',
+    component: ChatBubbleTest,
+    meta: { requiresAuth: false }
   }
 ];
 
