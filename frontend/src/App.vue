@@ -11,7 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue';
+import { computed } from 'vue';
 import { useUserStore } from './stores/userStore';
 import Navbar from './components/Navbar.vue';
 import MatrixRain from './components/MatrixRain.vue';
@@ -20,10 +20,9 @@ import ConnectionStatus from './components/ConnectionStatus.vue';
 
 const userStore = useUserStore();
 const isAuthenticated = computed(() => userStore.isAuthenticated);
+const isAuthReady = computed(() => userStore.isAuthReady);
 
-onMounted(() => {
-  userStore.initializeAuth();
-});
+// onMounted removed as auth is handled in router guard
 </script>
 
 <style>
