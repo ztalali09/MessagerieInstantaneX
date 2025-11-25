@@ -153,7 +153,7 @@
             
             <div class="space-y-2 flex flex-col" :class="group.isSent ? 'items-end' : 'items-start'">
               <div
-                v-for="(msg, msgIndex) in group.messages"
+                v-for="msg in group.messages"
                 :key="msg.id || (msg.timestamp + msg.message)"
                 class="flex flex-col"
                 :class="group.isSent ? 'items-end' : 'items-start'"
@@ -524,17 +524,67 @@ watch(selectedUser, (newUser) => {
   }
 });
 
-watch(() => messages.value.length, () => {
+// Watcher pour s'assurer que tous les utilisateurs ayant des messages sont dans la liste
+// (utile lors du chargement de l'historique)
+watch(() => messages.value, async (newMessages) => {
+  if (newMessages.length === 0) return;
+  
+  // Récupérer tous les IDs d'utilisateurs uniques qui ont envoyé ou reçu des messages
+  const uniqueUserIds = new Set<number>();
+  newMessages.forEach(msg => {
+    if (msg.from_user_id && msg.from_user_id.toString() !== currentUserId) {
+      uniqueUserIds.add(parseInt(msg.from_user_id.toString()));
+    }
+    if (msg.to_user_id && msg.to_user_id.toString() !== currentUserId) {
+      uniqueUserIds.add(parseInt(msg.to_user_id.toString()));
+    }
+  });
+  
+  // Ajouter tous les utilisateurs manquants
+  for (const userId of uniqueUserIds) {
+    await ensureUserInList(userId);
+  }
+}, { deep: true, immediate: false });
+
+watch(() => messages.value.length, async () => {
   const lastMsg = messages.value[messages.value.length - 1];
   if (lastMsg && lastMsg.to_user_id == currentUserId) {
+    const senderId = lastMsg.from_user_id.toString();
+    
+    // S'assurer que l'expéditeur est dans la liste des utilisateurs
+    await ensureUserInList(senderId);
+    
     if (!selectedUser.value || lastMsg.from_user_id != selectedUser.value.id) {
-      incrementUnread(lastMsg.from_user_id.toString());
+      incrementUnread(senderId);
     }
     if (Notification.permission === 'granted') {
       new Notification('New message', { body: 'You have a new message', icon: '/icon.png' });
     }
   }
 });
+
+// Fonction utilitaire pour s'assurer qu'un utilisateur est dans la liste
+const ensureUserInList = async (userId: number | string) => {
+  const userIdNum = typeof userId === 'string' ? parseInt(userId) : userId;
+  const userIdStr = userIdNum.toString();
+  
+  // Vérifier si l'utilisateur est déjà dans la liste
+  const userExists = users.value.some(u => u.id === userIdNum);
+  
+  if (!userExists && userIdNum !== userStore.currentUser?.id) {
+    try {
+      const user = await apiService.getUser(userIdNum);
+      users.value.push(user);
+      console.log(`✅ Utilisateur ajouté automatiquement: ${user.username}`);
+      return user;
+    } catch (error) {
+      console.error(`Erreur lors de la récupération de l'utilisateur ${userIdNum}:`, error);
+      return null;
+    }
+  }
+  
+  return users.value.find(u => u.id === userIdNum) || null;
+};
 
 const loadUsers = async () => {
   loading.value = true;
