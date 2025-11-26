@@ -389,6 +389,12 @@
         </div>
       </div>
     </Teleport>
+    
+    <MessageNotification
+      :notification="currentNotification"
+      @click="handleNotificationClick"
+      @close="hideNotification"
+    />
   </div>
 </template>
 
@@ -401,6 +407,8 @@ import { useToast } from '../composables/useToast';
 import { useKeyboard } from '../composables/useKeyboard';
 import { useUnreadMessages } from '../composables/useUnreadMessages';
 import { useConnectionStatus } from '../composables/useConnectionStatus';
+import { useMessageNotifications } from '../composables/useMessageNotifications';
+import MessageNotification from './MessageNotification.vue';
 import { AESImage } from '../crypto/AESImage';
 import { AESVideo } from '../crypto/AESVideo';
 import { AESAudio } from '../crypto/AESAudio';
@@ -415,6 +423,7 @@ const { success, error: showError } = useToast();
 const { register } = useKeyboard();
 const { getCount: getUnreadCount, markAsRead, increment: incrementUnread } = useUnreadMessages();
 const { isOnline } = useConnectionStatus();
+const { currentNotification, showNotification, hideNotification } = useMessageNotifications();
 
 const users = ref<User[]>([]);
 const loading = ref(false);
@@ -576,9 +585,26 @@ watch(selectedUser, (newUser) => {
 watch(() => messages.value.length, () => {
   const lastMsg = messages.value[messages.value.length - 1];
   if (lastMsg && lastMsg.to_user_id == currentUserId) {
+    const fromUserIdStr = lastMsg.from_user_id.toString();
+    
+    // Si on n'est pas dans la discussion avec cet utilisateur, afficher la notification
     if (!selectedUser.value || lastMsg.from_user_id != selectedUser.value.id) {
-      incrementUnread(lastMsg.from_user_id.toString());
+      incrementUnread(fromUserIdStr);
+      
+      // Trouver le nom d'utilisateur
+      const fromUser = users.value.find(u => u.id.toString() === fromUserIdStr);
+      const fromUsername = fromUser?.username || 'Unknown';
+      
+      // Afficher la notification
+      showNotification(
+        fromUserIdStr,
+        fromUsername,
+        lastMsg.message || '[Message]',
+        lastMsg.messageType || 'text',
+        lastMsg.timestamp
+      );
     }
+    
     if (Notification.permission === 'granted') {
       new Notification('New message', { body: 'You have a new message', icon: '/icon.png' });
     }
@@ -613,6 +639,13 @@ function selectUser(user: User) {
       messageInput.value.focus();
     }
   });
+}
+
+function handleNotificationClick(fromUserId: string) {
+  const user = users.value.find(u => u.id.toString() === fromUserId);
+  if (user) {
+    selectUser(user);
+  }
 }
 
 function backToContacts() {
