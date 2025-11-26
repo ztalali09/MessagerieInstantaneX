@@ -38,7 +38,10 @@
           :key="user.id"
           @click="selectUser(user)"
           class="group relative flex min-w-[80px] cursor-pointer flex-col items-center justify-center gap-1 px-2 py-2 transition-all hover:bg-green-500/10 md:min-w-0 md:flex-row md:justify-start md:gap-3 md:px-3 border border-transparent hover:border-green-500/30 hover-matrix-glow"
-          :class="{ 'bg-green-500/20 border-green-500 matrix-box-glow': selectedUser && selectedUser.id === user.id }"
+          :class="{ 
+            'bg-green-500/20 border-green-500 matrix-box-glow': selectedUser && selectedUser.id === user.id,
+            'bg-green-500/15': getUnreadCount(user.id.toString()) > 0 && (!selectedUser || selectedUser.id !== user.id)
+          }"
         >
           <div class="relative">
             <div class="flex h-10 w-10 items-center justify-center bg-black border-2 border-green-500 text-sm font-bold text-green-500 shadow-lg md:h-9 md:w-9 matrix-glow-subtle">
@@ -48,21 +51,30 @@
               v-if="onlineUsers.includes(user.id.toString())"
               class="absolute bottom-0 right-0 h-3 w-3 border-2 border-black bg-green-500 md:h-2.5 md:w-2.5 matrix-glow-subtle"
             ></span>
-            <span
-              v-if="getUnreadCount(user.id.toString()) > 0"
-              class="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full matrix-glow-subtle"
-            >
-              {{ getUnreadCount(user.id.toString()) }}
-            </span>
           </div>
           
-          <div class="flex w-full flex-col items-center overflow-hidden md:items-start">
+          <div class="flex w-full flex-col items-center overflow-hidden md:items-start flex-1">
             <h4 class="w-full truncate text-center text-xs font-bold text-green-500 group-hover:text-green-400 md:text-left md:text-sm">
               &gt; {{ user.username }}
             </h4>
             <p class="hidden truncate text-xs text-green-700 group-hover:text-green-600 md:block font-mono">
               {{ onlineUsers.includes(user.id.toString()) ? '[ONLINE]' : '[OFFLINE]' }}
             </p>
+          </div>
+          
+          <div class="flex flex-col items-end gap-1 flex-shrink-0">
+            <span
+              v-if="getUnreadCount(user.id.toString()) > 0"
+              class="flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-green-500 text-white text-[10px] font-bold rounded-full matrix-glow-subtle"
+            >
+              {{ getUnreadCount(user.id.toString()) }}
+            </span>
+            <span
+              v-if="getLastMessageTime(user.id)"
+              class="text-[10px] text-green-700 font-mono hidden md:block"
+            >
+              {{ formatLastMessageTime(getLastMessageTime(user.id)!) }}
+            </span>
           </div>
         </div>
       </div>
@@ -105,6 +117,19 @@
             :class="msg.from_user_id == currentUserId ? 'items-end' : 'items-start'"
           >
             <div
+              v-if="msg.messageType === 'audio'"
+              class="max-w-[85%] md:max-w-[70%] text-sm font-mono"
+            >
+              <div v-if="msg.decryptedAudio" class="relative group">
+                <audio :src="msg.decryptedAudio" controls class="w-full min-w-[200px]"></audio>
+              </div>
+              <div v-else class="flex items-center gap-2 text-xs font-mono opacity-70">
+                <div class="h-4 w-4 animate-spin border-2 border-green-500 border-t-transparent matrix-glow-subtle"></div>
+                [DECRYPTING_AUDIO...]
+              </div>
+            </div>
+            <div
+              v-else
               class="max-w-[85%] md:max-w-[70%] px-4 py-2 text-sm font-mono"
               :class="msg.from_user_id == currentUserId 
                 ? 'matrix-message-sent text-green-500' 
@@ -126,15 +151,6 @@
                  <div v-else class="flex items-center gap-2 text-xs font-mono opacity-70">
                    <div class="h-4 w-4 animate-spin border-2 border-green-500 border-t-transparent matrix-glow-subtle"></div>
                    [DECRYPTING_VIDEO...]
-                 </div>
-              </template>
-              <template v-else-if="msg.messageType === 'audio'">
-                 <div v-if="msg.decryptedAudio" class="relative group">
-                    <audio :src="msg.decryptedAudio" controls class="w-full min-w-[200px]"></audio>
-                 </div>
-                 <div v-else class="flex items-center gap-2 text-xs font-mono opacity-70">
-                   <div class="h-4 w-4 animate-spin border-2 border-green-500 border-t-transparent matrix-glow-subtle"></div>
-                   [DECRYPTING_AUDIO...]
                  </div>
               </template>
               <template v-else>
@@ -329,9 +345,40 @@ const aesAudio = new AESAudio();
 const { messages, onlineUsers, typingUsers, sendMessage, startTyping, stopTyping, socket } = useSocket();
 
 const filteredUsers = computed(() => {
-  if (!searchQuery.value) return users.value;
-  const query = searchQuery.value.toLowerCase();
-  return users.value.filter(u => u.username.toLowerCase().includes(query));
+  let result = users.value;
+  
+  // Filtrer selon la recherche
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    result = result.filter(u => u.username.toLowerCase().includes(query));
+  }
+  
+  // Trier par dernier message (le plus récent en haut)
+  return result.sort((a, b) => {
+    // Trouver le dernier message avec chaque utilisateur
+    const getLastMessageTime = (userId: number) => {
+      const userIdStr = userId.toString();
+      const userMessages = messages.value.filter(
+        m => (m.from_user_id == userIdStr && m.to_user_id == currentUserId) ||
+             (m.to_user_id == userIdStr && m.from_user_id == currentUserId)
+      );
+      if (userMessages.length === 0) return 0;
+      const lastMessage = userMessages.reduce((latest, msg) => {
+        const msgTime = new Date(msg.timestamp).getTime();
+        return msgTime > latest ? msgTime : latest;
+      }, 0);
+      return lastMessage;
+    };
+    
+    const timeA = getLastMessageTime(a.id);
+    const timeB = getLastMessageTime(b.id);
+    
+    // Les utilisateurs avec des messages récents en haut, puis ceux sans messages
+    if (timeA === 0 && timeB === 0) return 0; // Les deux sans messages, ordre original
+    if (timeA === 0) return 1; // A sans message, mettre en bas
+    if (timeB === 0) return -1; // B sans message, mettre en bas
+    return timeB - timeA; // Plus récent en haut
+  });
 });
 
 const conversationMessages = computed(() => {
@@ -446,6 +493,52 @@ function handleInput() {
 function formatTimestamp(ts: string) {
   const date = new Date(ts);
   return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+}
+
+function getLastMessageTime(userId: number): string | null {
+  const userIdStr = userId.toString();
+  const userMessages = messages.value.filter(
+    m => (m.from_user_id == userIdStr && m.to_user_id == currentUserId) ||
+         (m.to_user_id == userIdStr && m.from_user_id == currentUserId)
+  );
+  if (userMessages.length === 0) return null;
+  const lastMessage = userMessages.reduce((latest, msg) => {
+    const msgTime = new Date(msg.timestamp).getTime();
+    const latestTime = latest ? new Date(latest.timestamp).getTime() : 0;
+    return msgTime > latestTime ? msg : latest;
+  }, userMessages[0]);
+  return lastMessage.timestamp;
+}
+
+function formatLastMessageTime(timestamp: string): string {
+  const now = new Date();
+  const msgDate = new Date(timestamp);
+  const diffMs = now.getTime() - msgDate.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  
+  // Aujourd'hui
+  if (diffDays === 0) {
+    if (diffMins < 1) return 'Maintenant';
+    if (diffMins < 60) return `${diffMins} min`;
+    return `${diffHours}h`;
+  }
+  
+  // Hier
+  if (diffDays === 1) {
+    return 'Hier';
+  }
+  
+  // Cette semaine
+  if (diffDays < 7) {
+    return `${diffDays}j`;
+  }
+  
+  // Plus ancien - afficher la date
+  const day = msgDate.getDate().toString().padStart(2, '0');
+  const month = (msgDate.getMonth() + 1).toString().padStart(2, '0');
+  return `${day}/${month}`;
 }
 
 function handleSearch(query: string) {

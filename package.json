@@ -4,9 +4,13 @@
   "license": "MIT",
   "scripts": {
     "build:frontend": "nx build frontend && npx cap sync",
+    "build:backend": "nx build backend",
     "dev:backend": "cd backend && DATABASE_URL='postgresql://postgres:password@localhost:5432/messagex?schema=public' PORT=3000 HOST=0.0.0.0 node dist/main.js",
+    "dev:backend:watch": "nx serve backend",
     "dev:frontend": "nx serve frontend",
-    "dev": "npm run dev:backend & npm run dev:frontend"
+    "dev": "npm run dev:backend & npm run dev:frontend",
+    "setup:db": "cd backend && npx prisma generate && npx prisma migrate deploy",
+    "setup": "npm install && cd backend && npm install && cd ../frontend && npm install && cd .. && npm run setup:db"
   },
   "private": true,
   "dependencies": {

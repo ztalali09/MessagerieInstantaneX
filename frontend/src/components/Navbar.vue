@@ -6,8 +6,6 @@
           <div class="flex h-7 w-7 md:h-8 md:w-8 flex-shrink-0 items-center justify-center border-2 shadow-lg matrix-glow-subtle" style="background: var(--bg-primary); border-color: var(--matrix-normal);">
             <span class="text-xs md:text-sm font-bold" style="color: var(--matrix-bright);">X</span>
           </div>
-          <span class="hidden xs:inline text-[10px] sm:text-xs md:text-base">&gt; THE_X_MSG</span>
-          <span class="xs:hidden text-[10px]">&gt; X</span>
         </router-link>
       </div>
 
@@ -20,7 +18,7 @@
           @click="logout" 
           class="group relative overflow-hidden bg-transparent border border-green-500 px-2 md:px-4 py-1.5 md:py-1.5 text-[10px] md:text-sm font-bold text-green-500 transition-all active:bg-green-500/30 md:hover:bg-green-500/20 hover-matrix-glow font-mono touch-manipulation min-h-[36px]"
         >
-          <span class="hidden xs:inline">[OUT]</span><span class="xs:hidden">⏻</span>
+          <span class="hidden xs:inline">[LOGOUT]</span><span class="xs:hidden">[LOGOUT]</span>
         </button>
       </div>
     </div>
