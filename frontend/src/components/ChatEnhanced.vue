@@ -49,7 +49,10 @@
           :class="[
             'group relative flex cursor-pointer transition-all active:bg-green-500/20 border border-transparent active:border-green-500/50 md:hover:bg-green-500/10 md:hover:border-green-500/30 hover-matrix-glow touch-manipulation',
             isMobile ? 'flex-row items-center gap-3 px-3 py-3' : 'min-w-[80px] flex-shrink-0 flex-col items-center justify-center gap-1.5 px-2.5 py-2.5 md:min-w-0 md:flex-row md:justify-start md:gap-3 md:px-3 md:py-2',
-            { 'bg-green-500/20 border-green-500 matrix-box-glow': selectedUser && selectedUser.id === user.id }
+            { 
+              'bg-green-500/20 border-green-500 matrix-box-glow': selectedUser && selectedUser.id === user.id,
+              'bg-green-500/15': getUnreadCount(user.id.toString()) > 0 && (!selectedUser || selectedUser.id !== user.id)
+            }
           ]"
         >
           <div class="relative flex-shrink-0">
@@ -63,15 +66,9 @@
               v-if="onlineUsers.includes(user.id.toString())"
               class="absolute bottom-0 right-0 h-3 w-3 border-2 border-black bg-green-500 rounded-full md:h-2.5 md:w-2.5 matrix-glow-subtle"
             ></span>
-            <span
-              v-if="getUnreadCount(user.id.toString()) > 0"
-              class="absolute -top-0.5 -right-0.5 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full md:h-5 md:w-5 md:text-[10px] matrix-glow-subtle"
-            >
-              {{ getUnreadCount(user.id.toString()) }}
-            </span>
           </div>
           
-          <div class="flex w-full flex-col overflow-hidden min-w-0" :class="isMobile ? 'items-start' : 'items-center md:items-start'">
+          <div class="flex w-full flex-col overflow-hidden min-w-0 flex-1" :class="isMobile ? 'items-start' : 'items-center md:items-start'">
             <h4 
               class="w-full truncate font-bold text-green-500 group-hover:text-green-400 leading-tight"
               :class="isMobile ? 'text-sm text-left' : 'text-center text-[11px] md:text-left md:text-sm'"
@@ -84,6 +81,23 @@
             >
               {{ onlineUsers.includes(user.id.toString()) ? '[ONLINE]' : '[OFFLINE]' }}
             </p>
+          </div>
+          
+          <div class="flex flex-col items-end gap-1 flex-shrink-0">
+            <span
+              v-if="getUnreadCount(user.id.toString()) > 0"
+              class="flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-green-500 text-white text-[10px] font-bold rounded-full matrix-glow-subtle"
+              :class="isMobile ? 'text-xs' : 'md:text-[10px]'"
+            >
+              {{ getUnreadCount(user.id.toString()) }}
+            </span>
+            <span
+              v-if="getLastMessageTime(user.id)"
+              class="text-[10px] text-green-700 font-mono"
+              :class="isMobile ? 'block' : 'hidden md:block'"
+            >
+              {{ formatLastMessageTime(getLastMessageTime(user.id)!) }}
+            </span>
           </div>
         </div>
       </div>
@@ -159,6 +173,20 @@
                 :class="group.isSent ? 'items-end' : 'items-start'"
               >
                 <div
+                  v-if="msg.messageType === 'audio'"
+                  class="text-sm md:text-[15px] font-mono max-w-[90%] md:max-w-[85%] lg:max-w-[70%]"
+                  style="color: var(--matrix-normal);"
+                >
+                  <div v-if="msg.decryptedAudio" class="relative group">
+                    <AudioPlayer :src="msg.decryptedAudio" />
+                  </div>
+                  <div v-else class="flex items-center gap-2 text-xs font-mono" style="color: var(--matrix-dim);">
+                    <div class="h-4 w-4 animate-spin border-2 border-green-500 border-t-transparent"></div>
+                    [DECRYPTING_AUDIO...]
+                  </div>
+                </div>
+                <div
+                  v-else
                   class="text-sm md:text-[15px] font-mono max-w-[90%] md:max-w-[85%] lg:max-w-[70%]"
                   :class="group.isSent 
                     ? 'matrix-message-sent' 
@@ -181,15 +209,6 @@
                      <div v-else class="flex items-center gap-2 text-xs font-mono" style="color: var(--matrix-dim);">
                        <div class="h-4 w-4 animate-spin border-2 border-green-500 border-t-transparent"></div>
                        [DECRYPTING_VIDEO...]
-                     </div>
-                  </template>
-                  <template v-else-if="msg.messageType === 'audio'">
-                     <div v-if="msg.decryptedAudio" class="relative group">
-                        <AudioPlayer :src="msg.decryptedAudio" />
-                     </div>
-                     <div v-else class="flex items-center gap-2 text-xs font-mono" style="color: var(--matrix-dim);">
-                       <div class="h-4 w-4 animate-spin border-2 border-green-500 border-t-transparent"></div>
-                       [DECRYPTING_AUDIO...]
                      </div>
                   </template>
                   <template v-else>
@@ -370,6 +389,12 @@
         </div>
       </div>
     </Teleport>
+    
+    <MessageNotification
+      :notification="currentNotification"
+      @click="handleNotificationClick"
+      @close="hideNotification"
+    />
   </div>
 </template>
 
@@ -382,6 +407,8 @@ import { useToast } from '../composables/useToast';
 import { useKeyboard } from '../composables/useKeyboard';
 import { useUnreadMessages } from '../composables/useUnreadMessages';
 import { useConnectionStatus } from '../composables/useConnectionStatus';
+import { useMessageNotifications } from '../composables/useMessageNotifications';
+import MessageNotification from './MessageNotification.vue';
 import { AESImage } from '../crypto/AESImage';
 import { AESVideo } from '../crypto/AESVideo';
 import { AESAudio } from '../crypto/AESAudio';
@@ -396,6 +423,7 @@ const { success, error: showError } = useToast();
 const { register } = useKeyboard();
 const { getCount: getUnreadCount, markAsRead, increment: incrementUnread } = useUnreadMessages();
 const { isOnline } = useConnectionStatus();
+const { currentNotification, showNotification, hideNotification } = useMessageNotifications();
 
 const users = ref<User[]>([]);
 const loading = ref(false);
@@ -434,11 +462,41 @@ const aesAudio = new AESAudio();
 const { messages, onlineUsers, typingUsers, sendMessage, startTyping, stopTyping, socket } = useSocket();
 
 const filteredUsers = computed(() => {
-  if (!searchQuery.value) return users.value;
-  const query = searchQuery.value.toLowerCase();
-  const filtered = users.value.filter(u => u.username.toLowerCase().includes(query));
-  console.log(`🔍 Search query: "${query}", Found ${filtered.length} users`);
-  return filtered;
+  let result = users.value;
+  
+  // Filtrer selon la recherche
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    result = result.filter(u => u.username.toLowerCase().includes(query));
+    console.log(`🔍 Search query: "${query}", Found ${result.length} users`);
+  }
+  
+  // Trier par dernier message (le plus récent en haut)
+  return result.sort((a, b) => {
+    // Trouver le dernier message avec chaque utilisateur
+    const getLastMessageTime = (userId: number) => {
+      const userIdStr = userId.toString();
+      const userMessages = messages.value.filter(
+        m => (m.from_user_id == userIdStr && m.to_user_id == currentUserId) ||
+             (m.to_user_id == userIdStr && m.from_user_id == currentUserId)
+      );
+      if (userMessages.length === 0) return 0;
+      const lastMessage = userMessages.reduce((latest, msg) => {
+        const msgTime = new Date(msg.timestamp).getTime();
+        return msgTime > latest ? msgTime : latest;
+      }, 0);
+      return lastMessage;
+    };
+    
+    const timeA = getLastMessageTime(a.id);
+    const timeB = getLastMessageTime(b.id);
+    
+    // Les utilisateurs avec des messages récents en haut, puis ceux sans messages
+    if (timeA === 0 && timeB === 0) return 0; // Les deux sans messages, ordre original
+    if (timeA === 0) return 1; // A sans message, mettre en bas
+    if (timeB === 0) return -1; // B sans message, mettre en bas
+    return timeB - timeA; // Plus récent en haut
+  });
 });
 
 const conversationMessages = computed(() => {
@@ -527,9 +585,26 @@ watch(selectedUser, (newUser) => {
 watch(() => messages.value.length, () => {
   const lastMsg = messages.value[messages.value.length - 1];
   if (lastMsg && lastMsg.to_user_id == currentUserId) {
+    const fromUserIdStr = lastMsg.from_user_id.toString();
+    
+    // Si on n'est pas dans la discussion avec cet utilisateur, afficher la notification
     if (!selectedUser.value || lastMsg.from_user_id != selectedUser.value.id) {
-      incrementUnread(lastMsg.from_user_id.toString());
+      incrementUnread(fromUserIdStr);
+      
+      // Trouver le nom d'utilisateur
+      const fromUser = users.value.find(u => u.id.toString() === fromUserIdStr);
+      const fromUsername = fromUser?.username || 'Unknown';
+      
+      // Afficher la notification
+      showNotification(
+        fromUserIdStr,
+        fromUsername,
+        lastMsg.message || '[Message]',
+        lastMsg.messageType || 'text',
+        lastMsg.timestamp
+      );
     }
+    
     if (Notification.permission === 'granted') {
       new Notification('New message', { body: 'You have a new message', icon: '/icon.png' });
     }
@@ -564,6 +639,13 @@ function selectUser(user: User) {
       messageInput.value.focus();
     }
   });
+}
+
+function handleNotificationClick(fromUserId: string) {
+  const user = users.value.find(u => u.id.toString() === fromUserId);
+  if (user) {
+    selectUser(user);
+  }
 }
 
 function backToContacts() {
@@ -617,6 +699,52 @@ function handleInput() {
 function formatTimestamp(ts: string) {
   const date = new Date(ts);
   return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+}
+
+function getLastMessageTime(userId: number): string | null {
+  const userIdStr = userId.toString();
+  const userMessages = messages.value.filter(
+    m => (m.from_user_id == userIdStr && m.to_user_id == currentUserId) ||
+         (m.to_user_id == userIdStr && m.from_user_id == currentUserId)
+  );
+  if (userMessages.length === 0) return null;
+  const lastMessage = userMessages.reduce((latest, msg) => {
+    const msgTime = new Date(msg.timestamp).getTime();
+    const latestTime = latest ? new Date(latest.timestamp).getTime() : 0;
+    return msgTime > latestTime ? msg : latest;
+  }, userMessages[0]);
+  return lastMessage.timestamp;
+}
+
+function formatLastMessageTime(timestamp: string): string {
+  const now = new Date();
+  const msgDate = new Date(timestamp);
+  const diffMs = now.getTime() - msgDate.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  
+  // Aujourd'hui
+  if (diffDays === 0) {
+    if (diffMins < 1) return 'Maintenant';
+    if (diffMins < 60) return `${diffMins} min`;
+    return `${diffHours}h`;
+  }
+  
+  // Hier
+  if (diffDays === 1) {
+    return 'Hier';
+  }
+  
+  // Cette semaine
+  if (diffDays < 7) {
+    return `${diffDays}j`;
+  }
+  
+  // Plus ancien - afficher la date
+  const day = msgDate.getDate().toString().padStart(2, '0');
+  const month = (msgDate.getMonth() + 1).toString().padStart(2, '0');
+  return `${day}/${month}`;
 }
 
 function handleSearch(query: string) {

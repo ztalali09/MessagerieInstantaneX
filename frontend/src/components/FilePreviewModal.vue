@@ -38,8 +38,8 @@
           </div>
 
           <div class="flex gap-2 p-3 md:p-4 border-t border-green-500/30">
-            <button @click="emit('send')" class="matrix-btn flex-1 py-3 md:py-2 px-4 font-bold text-sm md:text-base">[SEND]</button>
             <button @click="close" class="flex-1 py-3 md:py-2 px-4 font-bold font-mono border-2 border-red-500 text-red-500 active:bg-red-500/20 md:hover:bg-red-500/10 transition-all text-sm md:text-base">[CANCEL]</button>
+            <button @click="emit('send')" class="matrix-btn flex-1 py-3 md:py-2 px-4 font-bold text-sm md:text-base">[SEND]</button>
           </div>
         </div>
       </div>
